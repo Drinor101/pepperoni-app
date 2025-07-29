@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
+import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
 
 interface CartItem {
   id: string;
@@ -67,7 +68,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ cartTotal, onCartClick, add
       <nav className="px-4 py-3 shadow-lg" style={{ backgroundColor: '#37B34A' }}>
         <div className="flex items-center justify-between">
           <img 
-            src="/src/assets/pepperoni-test 1 (1).svg" 
+            src={pepperoniLogo}
             alt="Pepperoni Pizza Logo" 
             className="h-12 w-auto"
           />

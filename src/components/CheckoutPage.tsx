@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin, Clock, X } from 'lucide-react';
+import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
 
 interface CartItem {
   id: string;
@@ -63,7 +64,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
             ← Back
           </button>
           <img 
-            src="/src/assets/pepperoni-test 1 (1).svg" 
+            src={pepperoniLogo}
             alt="Pepperoni Pizza Logo" 
             className="h-12 w-auto"
           />
