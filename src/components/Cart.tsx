@@ -18,6 +18,8 @@ interface CartProps {
   total: number;
   formatPrice: (price: number) => string;
   onCheckout: () => void;
+  onBackToMenu: () => void;
+  showBackButton?: boolean; // New prop to control back button visibility
 }
 
 const Cart: React.FC<CartProps> = ({
@@ -28,10 +30,12 @@ const Cart: React.FC<CartProps> = ({
   deliveryFee,
   total,
   formatPrice,
-  onCheckout
+  onCheckout,
+  onBackToMenu,
+  showBackButton = false
 }) => {
   return (
-    <div className="bg-white rounded-lg border-2 border-orange-400 p-4 w-80 shadow-lg">
+    <div className="h-full flex flex-col bg-white rounded-lg border-2 border-orange-400 p-4 shadow-lg">
       {/* Header */}
       <div className="bg-green-500 text-white text-center py-3 rounded-lg mb-4">
         <h2 className="text-xl font-bold italic">POROSIA JUAJ</h2>
@@ -104,17 +108,28 @@ const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      {/* Order Button */}
-      <button 
-        onClick={onCheckout}
-        disabled={cartItems.length === 0}
-        className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-center py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-colors"
-      >
-        <div className="font-bold text-sm leading-tight">
-          POROSIT DIÇKA<br />
-          SE PE SHOH JE UNTU!!!
-        </div>
-      </button>
+      {/* Action Buttons */}
+      <div className="space-y-3">
+        <button 
+          onClick={onCheckout}
+          disabled={cartItems.length === 0}
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-center py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-colors"
+        >
+          <div className="font-bold text-sm leading-tight">
+            POROSIT DIÇKA<br />
+            SE PE SHOH JE UNTU!!!
+          </div>
+        </button>
+        
+        {showBackButton && (
+          <button 
+            onClick={onBackToMenu}
+            className="w-full bg-gray-500 text-white text-center py-2 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            Kthehu në menunë
+          </button>
+        )}
+      </div>
     </div>
   );
 };

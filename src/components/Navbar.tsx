@@ -6,9 +6,10 @@ import cartIcon from '../assets/Frame.svg';
 
 interface NavbarProps {
   cartTotal: string;
+  totalItems: number;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ cartTotal }) => {
+const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems }) => {
   return (
     <nav className="px-4 py-3 shadow-lg" style={{ backgroundColor: '#37B34A' }}>
       <div className="w-full flex items-center justify-between">
@@ -35,7 +36,7 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal }) => {
             </span>
           </div>
 
-          {/* Price/Cart Section */}
+          {/* Price/Cart Section - Informational Only */}
           <div className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm">
             <img 
               src={cartIcon}
@@ -43,6 +44,11 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal }) => {
               className="w-5 h-5"
             />
             <span className="text-white font-bold text-lg">{cartTotal}</span>
+            {totalItems > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
           </div>
         </div>
       </div>
