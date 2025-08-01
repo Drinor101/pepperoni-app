@@ -8,15 +8,19 @@ import LoginPage from './components/LoginPage';
 import AdminDashboard from './components/AdminDashboard';
 import DriverDashboard from './components/DriverDashboard';
 import StaffDashboard from './components/StaffDashboard';
-import OrderTracking from './components/OrderTracking';
-import MobileLayout from './components/MobileLayout';
 
-type AppState = 'home' | 'cart' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'tracking';
+import MobileLayout from './components/MobileLayout';
+import DatabaseTest from './components/DatabaseTest';
+import { authService } from './services/database';
+
+type AppState = 'home' | 'cart' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'test';
 
 interface User {
   username: string;
   role: 'admin' | 'staff' | 'driver';
   location?: string;
+  location_id?: string;
+  id?: string;
 }
 
 interface CartItem {
@@ -31,20 +35,31 @@ function App() {
   const [currentPage, setCurrentPage] = useState<AppState>('home');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [trackingOrderNumber, setTrackingOrderNumber] = useState<string>('');
 
-  const handleLogin = (username: string, password: string) => {
-    // Mock authentication with role-based access
-    if (username === 'admin' && password === 'admin') {
-      setUser({ username: 'admin', role: 'admin' });
-      setCurrentPage('admin');
-    } else if (username === 'staff' && password === 'staff') {
-      setUser({ username: 'staff', role: 'staff', location: 'Pepperoni Pizza - Arbëri' });
-      setCurrentPage('staff');
-    } else if (username === 'driver' && password === 'driver') {
-      setUser({ username: 'driver', role: 'driver' });
-      setCurrentPage('driver');
-    } else {
+  const [orderData, setOrderData] = useState<any>(null);
+
+  const handleLogin = async (username: string, password: string) => {
+    try {
+      // For now, we'll use a simple check against hardcoded users
+      // In production, you'd use proper password verification
+      const userData = await authService.login(username, password);
+      
+      setUser({ 
+        username: userData.username, 
+        role: userData.role, 
+        location: userData.locations?.name,
+        location_id: userData.location_id,
+        id: userData.id
+      });
+      
+      if (userData.role === 'admin') {
+        setCurrentPage('admin');
+      } else if (userData.role === 'staff') {
+        setCurrentPage('staff');
+      } else if (userData.role === 'driver') {
+        setCurrentPage('driver');
+      }
+    } catch (error) {
       alert('Invalid credentials! Try:\n- admin/admin\n- staff/staff\n- driver/driver');
     }
   };
@@ -58,12 +73,9 @@ function App() {
     setCurrentPage('login');
   };
 
-  const handleGoToTracking = (orderNumber: string) => {
-    setTrackingOrderNumber(orderNumber);
-    setCurrentPage('tracking');
-  };
 
-  const addToCart = (item: CartItem) => {
+
+  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
     setCartItems(prev => {
       const existingItem = prev.find(cartItem => cartItem.id === item.id);
       if (existingItem) {
@@ -124,6 +136,22 @@ function App() {
 
   return (
     <div className="App">
+      {currentPage === 'test' && (
+        <div className="min-h-screen bg-gray-50 p-8">
+          <div className="max-w-4xl mx-auto">
+            <DatabaseTest />
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => setCurrentPage('home')}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {currentPage === 'login' && (
         <LoginPage
           onLogin={handleLogin}
@@ -152,62 +180,69 @@ function App() {
         />
       )}
 
-      {currentPage === 'tracking' && (
-        <OrderTracking
-          orderNumber={trackingOrderNumber}
-          onBack={() => setCurrentPage('home')}
-        />
-      )}
+
 
       {['home', 'cart', 'checkout', 'thankyou'].includes(currentPage) && (
         <>
-          <Navbar
-            currentPage={currentPage}
-            cartItems={cartItems}
-            totalItems={totalItems}
-            onAddToCart={addToCart}
-            onRemoveFromCart={removeFromCart}
-            onUpdateQuantity={updateQuantity}
-            onClearCart={clearCart}
-            onCheckout={() => setCurrentPage('checkout')}
-            onBackToHome={() => setCurrentPage('home')}
-            onLogin={handleGoToLogin}
-          />
+                     <Navbar
+             cartTotal={`${(totalPrice + 2.00).toFixed(2)}€`}
+             totalItems={totalItems}
+             onLogin={handleGoToLogin}
+             onCartClick={() => setCurrentPage('cart')}
+           />
 
           {currentPage === 'home' && (
             <HeroSection
-              onAddToCart={addToCart}
-              onViewCart={() => setCurrentPage('cart')}
+              addToCart={addToCart}
             />
           )}
 
-          {currentPage === 'cart' && (
-            <Cart
-              cartItems={cartItems}
-              totalPrice={totalPrice}
-              onRemoveFromCart={removeFromCart}
-              onUpdateQuantity={updateQuantity}
-              onClearCart={clearCart}
-              onCheckout={() => setCurrentPage('checkout')}
-              onBackToHome={() => setCurrentPage('home')}
-            />
-          )}
+                     {currentPage === 'cart' && (
+             <div className="flex justify-center items-start min-h-screen bg-gray-50 pt-20">
+                            <Cart
+               cartItems={cartItems}
+               updateQuantity={updateQuantity}
+               removeFromCart={removeFromCart}
+               subtotal={totalPrice}
+               deliveryFee={2.00}
+               total={totalPrice + 2.00}
+               formatPrice={(price: number) => `${price.toFixed(2)}€`}
+               onCheckout={() => setCurrentPage('checkout')}
+               onBackToMenu={() => setCurrentPage('home')}
+             />
+             </div>
+           )}
 
           {currentPage === 'checkout' && (
             <CheckoutPage
               cartItems={cartItems}
-              totalPrice={totalPrice}
-              onOrderComplete={() => setCurrentPage('thankyou')}
-              onBackToCart={() => setCurrentPage('cart')}
+              subtotal={totalPrice}
+              deliveryFee={2.00}
+              total={totalPrice + 2.00}
+              formatPrice={(price: number) => `${price.toFixed(2)}€`}
+              updateQuantity={updateQuantity}
+              removeFromCart={removeFromCart}
+                             onOrderComplete={(orderData) => {
+                 console.log('Order completed:', orderData);
+                 // Store order data for ThankYouPage
+                 setOrderData(orderData);
+                 setCurrentPage('thankyou');
+               }}
+              onBack={() => setCurrentPage('cart')}
             />
           )}
 
-          {currentPage === 'thankyou' && (
-            <ThankYouPage
-              onBackToHome={() => setCurrentPage('home')}
-              onTrackOrder={handleGoToTracking}
-            />
-          )}
+                     {currentPage === 'thankyou' && orderData && (
+             <ThankYouPage
+               orderData={orderData}
+               cartItems={cartItems}
+               onNewOrder={() => {
+                 setOrderData(null);
+                 clearCart();
+                 setCurrentPage('home');
+               }}
+             />
+           )}
         </>
       )}
     </div>

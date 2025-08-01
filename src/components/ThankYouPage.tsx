@@ -1,17 +1,22 @@
 import React from 'react';
 import { Clock, MapPin, User, Building } from 'lucide-react';
 
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
 interface ThankYouPageProps {
   orderData: any;
+  cartItems: CartItem[];
   onNewOrder: () => void;
 }
 
-const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, onNewOrder }) => {
-  const copyOrderLink = () => {
-    const orderLink = `https://pepperoni-pizza.com/order/${orderData.orderNumber}`;
-    navigator.clipboard.writeText(orderLink);
-    alert('Linku i porosisë u kopjua!');
-  };
+const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, cartItems, onNewOrder }) => {
+
 
   const downloadInvoice = () => {
     alert('Fatura po shkarkohet...');
@@ -23,11 +28,14 @@ const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, onNewOrder }) =>
         {/* Success Message */}
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-orange-500 mb-4">
-            FALEMINDERIT PËR POROSINË TUAJ, {orderData.name.toUpperCase()}! ❤️
+            FALEMINDERIT PËR POROSINË TUAJ, {orderData.name?.toUpperCase()}! ❤️
           </h1>
           <div className="flex items-center justify-center text-gray-600 mb-2">
             <Clock className="w-4 h-4 mr-2" />
             <span>Do pranoni porosinë brenda 45 minutave</span>
+          </div>
+          <div className="flex items-center justify-center text-gray-600 mb-2">
+            <span>🚚 Shoferi do t'ju telefonojë kur të arrijë</span>
           </div>
           <div className="flex items-center justify-center text-gray-600">
             <MapPin className="w-4 h-4 mr-2" />
@@ -77,9 +85,9 @@ const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, onNewOrder }) =>
 
           {/* Order Items */}
           <div className="space-y-2 mb-6">
-            {orderData.items.map((item: any, index: number) => (
+            {cartItems.map((item: CartItem, index: number) => (
               <div key={index} className="flex justify-between items-center">
-                <span>{item.name} <sup>(11)</sup></span>
+                <span>{item.name} <sup>({item.quantity})</sup></span>
                 <span className="font-bold">{(item.price * item.quantity).toFixed(2)}€</span>
               </div>
             ))}
@@ -96,16 +104,10 @@ const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, onNewOrder }) =>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <button
-            onClick={copyOrderLink}
-            className="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-bold py-4 px-6 rounded-lg transition-colors"
-          >
-            Kopjo linkun e porosisë
-          </button>
+        <div className="flex justify-center mb-8">
           <button
             onClick={downloadInvoice}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg transition-colors"
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-lg transition-colors"
           >
             Shkarko faturën
           </button>

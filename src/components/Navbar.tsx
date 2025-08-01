@@ -6,10 +6,12 @@ import cartIcon from '../assets/Frame.svg';
 
 interface NavbarProps {
   cartTotal: string;
+  totalItems: number;
   onLogin: () => void;
+  onCartClick: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ cartTotal, onLogin }) => {
+const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems, onLogin, onCartClick }) => {
   return (
     <nav className="px-4 py-3 shadow-lg" style={{ backgroundColor: '#37B34A' }}>
       <div className="w-full flex items-center justify-between">
@@ -46,14 +48,22 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal, onLogin }) => {
           </button>
 
           {/* Price/Cart Section */}
-          <div className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm">
+          <button
+            onClick={onCartClick}
+            className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm hover:bg-opacity-25 transition-all cursor-pointer"
+          >
             <img 
               src={cartIcon}
               alt="Shopping Cart" 
               className="w-5 h-5"
             />
             <span className="text-white font-bold text-lg">{cartTotal}</span>
-          </div>
+            {totalItems > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </button>
         </div>
       </div>
     </nav>

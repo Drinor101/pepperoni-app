@@ -16,18 +16,21 @@ import {
   X
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
+import { orderService, driverService, realtimeService } from '../services/database';
 
 interface User {
   username: string;
   role: 'admin' | 'staff' | 'driver';
   location?: string;
+  location_id?: string;
+  id?: string;
 }
 
 interface DeliveryOrder {
   id: string;
-  orderNumber: number;
-  customerName: string;
-  customerPhone: string;
+  order_number: number;
+  customer_name: string;
+  customer_phone: string;
   address: string;
   items: Array<{
     name: string;
@@ -36,10 +39,10 @@ interface DeliveryOrder {
   }>;
   total: number;
   status: 'pranuar' | 'konfirmuar' | 'ne_delivery' | 'perfunduar';
-  createdAt: string;
-  estimatedDelivery: string;
-  assignedDriverId: string;
-  location: string;
+  created_at: string;
+  estimated_delivery: string;
+  assigned_driver_id: string;
+  locations?: { name: string };
 }
 
 interface DriverDashboardProps {
@@ -48,74 +51,82 @@ interface DriverDashboardProps {
 }
 
 const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => {
-  // Mock delivery data - filtered for current driver and sorted by oldest first
-  const [deliveries, setDeliveries] = useState<DeliveryOrder[]>([
-    {
-      id: '1',
-      orderNumber: 601,
-      customerName: 'Blerjan Gashi',
-      customerPhone: '049500600',
-      address: 'Bajram Kelmendi Nr.20, Prishtinë',
-      items: [
-        { name: 'Pizza Margherita', quantity: 1, price: 3.50 },
-        { name: 'Hamburger Classic', quantity: 2, price: 2.50 }
-      ],
-      total: 8.50,
-      status: 'konfirmuar', // This order was assigned by staff
-      createdAt: '2024-01-15T14:20:00',
-      estimatedDelivery: '2024-01-15T15:15:00',
-      assignedDriverId: 'driver',
-      location: 'Pepperoni Pizza - Arbëri'
-    },
-    {
-      id: '2',
-      orderNumber: 602,
-      customerName: 'Ardian Krasniqi',
-      customerPhone: '044123456',
-      address: 'Rr. Nëna Terezë 15, Prishtinë',
-      items: [
-        { name: 'Pizza Pepperoni', quantity: 1, price: 4.00 }
-      ],
-      total: 4.00,
-      status: 'ne_delivery', // This order was accepted by driver
-      createdAt: '2024-01-15T14:25:00',
-      estimatedDelivery: '2024-01-15T15:10:00',
-      assignedDriverId: 'driver',
-      location: 'Pepperoni Pizza - Qendra'
-    }
-  ]);
+  const [deliveries, setDeliveries] = useState<DeliveryOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate real-time updates from staff
+  // Load driver's orders from database
   useEffect(() => {
-    const interval = setInterval(() => {
-      // This would normally be a WebSocket or API call to check for new orders
-      // For demo purposes, we'll simulate new orders being assigned
-      console.log('Checking for new orders...');
-    }, 5000);
+    const loadDriverOrders = async () => {
+      try {
+        setLoading(true);
+        if (user?.id) {
+          const ordersData = await orderService.getByDriver(user.id);
+          setDeliveries(ordersData);
+        }
+      } catch (err) {
+        console.error('Error loading driver orders:', err);
+        setError('Gabim në ngarkimin e porosive');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, []);
+    loadDriverOrders();
 
-  const acceptOrder = (deliveryId: string) => {
-    // When driver accepts order, automatically goes to delivery
-    setDeliveries(prev => prev.map(delivery => 
-      delivery.id === deliveryId ? { ...delivery, status: 'ne_delivery' } : delivery
-    ));
-    
-    // In a real app, this would update the staff dashboard via API
-    // For now, we'll just show an alert
-    alert('Porosia u pranua dhe u vendos në delivery! Stafi do ta shohë në kanban view.');
+    // Set up real-time subscription for driver's orders
+    if (user?.id) {
+      const ordersSubscription = realtimeService.subscribeToOrders((payload) => {
+        const relevantChange =
+          (payload.eventType === 'INSERT' && payload.new?.assigned_driver_id === user.id) ||
+          (payload.eventType === 'UPDATE' && payload.new?.assigned_driver_id === user.id) ||
+          (payload.eventType === 'DELETE' && payload.old?.assigned_driver_id === user.id);
+
+        if (relevantChange) {
+          if (user.id) {
+            orderService.getByDriver(user.id).then(setDeliveries);
+          }
+        }
+      });
+
+      return () => {
+        ordersSubscription.unsubscribe();
+      };
+    }
+  }, [user?.id]);
+
+  const acceptOrder = async (deliveryId: string) => {
+    try {
+      // Update order status in database
+      await orderService.updateStatus(deliveryId, 'ne_delivery');
+      
+      // Update local state
+      setDeliveries(prev => prev.map(delivery => 
+        delivery.id === deliveryId ? { ...delivery, status: 'ne_delivery' } : delivery
+      ));
+      
+      alert('Porosia u pranua! Statusi u ndryshua në "Në delivery" dhe stafi do ta shohë në kanban view.');
+    } catch (err) {
+      console.error('Error accepting order:', err);
+      alert('Gabim në pranimin e porosisë');
+    }
   };
 
-  const deliverOrder = (deliveryId: string) => {
-    // When driver delivers order, automatically shows to staff as delivered
-    setDeliveries(prev => prev.map(delivery => 
-      delivery.id === deliveryId ? { ...delivery, status: 'perfunduar' } : delivery
-    ));
-    
-    // In a real app, this would update the staff dashboard via API
-    // For now, we'll just show an alert
-    alert('Porosia u dorëzua! Automatikisht i doli stafit si "dorëzuar" në kanban view.');
+  const deliverOrder = async (deliveryId: string) => {
+    try {
+      // Update order status in database
+      await orderService.updateStatus(deliveryId, 'perfunduar');
+      
+      // Update local state
+      setDeliveries(prev => prev.map(delivery => 
+        delivery.id === deliveryId ? { ...delivery, status: 'perfunduar' } : delivery
+      ));
+      
+      alert('Porosia u dorëzua! Statusi u ndryshua në "Përfunduar" dhe stafi do ta shohë në kanban view.');
+    } catch (err) {
+      console.error('Error delivering order:', err);
+      alert('Gabim në dorëzimin e porosisë');
+    }
   };
 
   const getStatusColor = (status: DeliveryOrder['status']) => {
@@ -147,9 +158,36 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Duke ngarkuar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+          >
+            Provoni përsëri
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Filter and sort orders by oldest first
   const filteredDeliveries = deliveries
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const pranuarCount = deliveries.filter(d => d.status === 'pranuar').length;
   const konfirmuarCount = deliveries.filter(d => d.status === 'konfirmuar').length;
@@ -208,15 +246,17 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
             <div className="flex items-center space-x-3">
               <DollarSign className="w-5 h-5 text-green-600" />
               <div>
-                <p className="text-sm font-medium text-gray-900">45.20€</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {deliveries.reduce((sum, order) => sum + order.total, 0).toFixed(2)}€
+                </p>
                 <p className="text-xs text-gray-500">Fitimet sot</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <Star className="w-5 h-5 text-yellow-600" />
               <div>
-                <p className="text-sm font-medium text-gray-900">4.8</p>
-                <p className="text-xs text-gray-500">Vlerësimi mesatar</p>
+                <p className="text-sm font-medium text-gray-900">{perfunduarCount}</p>
+                <p className="text-xs text-gray-500">Porosi të dorëzuara</p>
               </div>
             </div>
           </div>
@@ -293,8 +333,8 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
                   <div key={delivery.id} className="bg-gray-50 rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">#{delivery.orderNumber}</h3>
-                        <p className="text-sm text-gray-500">{delivery.location}</p>
+                        <h3 className="text-lg font-semibold text-gray-900">#{delivery.order_number}</h3>
+                        <p className="text-sm text-gray-500">{delivery.locations?.name}</p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(delivery.status)}`}>
                         {getStatusText(delivery.status)}
@@ -305,8 +345,8 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
                       <div>
                         <h4 className="font-medium text-gray-900 mb-2">Informacionet e klientit</h4>
                         <div className="space-y-1">
-                          <p className="text-sm text-gray-600"><span className="font-medium">Emri:</span> {delivery.customerName}</p>
-                          <p className="text-sm text-gray-600"><span className="font-medium">Telefoni:</span> {delivery.customerPhone}</p>
+                          <p className="text-sm text-gray-600"><span className="font-medium">Emri:</span> {delivery.customer_name}</p>
+                          <p className="text-sm text-gray-600"><span className="font-medium">Telefoni:</span> {delivery.customer_phone}</p>
                           <p className="text-sm text-gray-600"><span className="font-medium">Adresa:</span> {delivery.address}</p>
                         </div>
                       </div>
@@ -314,7 +354,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
                       <div>
                         <h4 className="font-medium text-gray-900 mb-2">Detajet e porosisë</h4>
                         <div className="space-y-1">
-                          {delivery.items.map((item, index) => (
+                          {delivery.items?.map((item, index) => (
                             <p key={index} className="text-sm text-gray-600">
                               {item.quantity}x {item.name} - {item.price.toFixed(2)}€
                             </p>
@@ -328,7 +368,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
                     
                     <div className="flex flex-wrap gap-3 mb-4">
                       <button
-                        onClick={() => callCustomer(delivery.customerPhone)}
+                        onClick={() => callCustomer(delivery.customer_phone)}
                         className="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600"
                       >
                         <Phone className="w-4 h-4" />

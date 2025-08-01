@@ -4,11 +4,12 @@ interface CartItem {
   id: string;
   name: string;
   price: number;
+  quantity: number;
   image: string;
 }
 
 interface HeroSectionProps {
-  addToCart: (item: CartItem) => void;
+  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ addToCart }) => {
