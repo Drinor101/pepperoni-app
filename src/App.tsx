@@ -2,11 +2,22 @@ import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import Cart from './components/Cart';
-import MobileLayout from './components/MobileLayout';
 import CheckoutPage from './components/CheckoutPage';
 import ThankYouPage from './components/ThankYouPage';
+import LoginPage from './components/LoginPage';
+import AdminDashboard from './components/AdminDashboard';
+import DriverDashboard from './components/DriverDashboard';
+import StaffDashboard from './components/StaffDashboard';
+import OrderTracking from './components/OrderTracking';
+import MobileLayout from './components/MobileLayout';
 
-type AppState = 'home' | 'checkout' | 'thankyou';
+type AppState = 'home' | 'cart' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'tracking';
+
+interface User {
+  username: string;
+  role: 'admin' | 'staff' | 'driver';
+  location?: string;
+}
 
 interface CartItem {
   id: string;
@@ -18,21 +29,41 @@ interface CartItem {
 
 function App() {
   const [currentPage, setCurrentPage] = useState<AppState>('home');
-  const [orderData, setOrderData] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [trackingOrderNumber, setTrackingOrderNumber] = useState<string>('');
 
-  // Listen for window resize
-  React.useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const handleLogin = (username: string, password: string) => {
+    // Mock authentication with role-based access
+    if (username === 'admin' && password === 'admin') {
+      setUser({ username: 'admin', role: 'admin' });
+      setCurrentPage('admin');
+    } else if (username === 'staff' && password === 'staff') {
+      setUser({ username: 'staff', role: 'staff', location: 'Pepperoni Pizza - Arbëri' });
+      setCurrentPage('staff');
+    } else if (username === 'driver' && password === 'driver') {
+      setUser({ username: 'driver', role: 'driver' });
+      setCurrentPage('driver');
+    } else {
+      alert('Invalid credentials! Try:\n- admin/admin\n- staff/staff\n- driver/driver');
+    }
+  };
 
-  // Add item to cart
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
+  const handleLogout = () => {
+    setUser(null);
+    setCurrentPage('home');
+  };
+
+  const handleGoToLogin = () => {
+    setCurrentPage('login');
+  };
+
+  const handleGoToTracking = (orderNumber: string) => {
+    setTrackingOrderNumber(orderNumber);
+    setCurrentPage('tracking');
+  };
+
+  const addToCart = (item: CartItem) => {
     setCartItems(prev => {
       const existingItem = prev.find(cartItem => cartItem.id === item.id);
       if (existingItem) {
@@ -41,126 +72,142 @@ function App() {
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem
         );
-      } else {
-        return [...prev, { ...item, quantity: 1 }];
       }
+      return [...prev, { ...item, quantity: 1 }];
     });
   };
 
-  // Update item quantity
-  const updateQuantity = (id: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      setCartItems(prev => prev.filter(item => item.id !== id));
-    } else {
-      setCartItems(prev =>
-        prev.map(item =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
-    }
+  const removeFromCart = (itemId: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== itemId));
   };
 
-  // Remove item from cart
-  const removeFromCart = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  // Calculate totals
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const deliveryFee = 1.00;
-  const total = subtotal + deliveryFee;
-
-  const formatPrice = (price: number) => `${price.toFixed(2)}€`;
-
-  const handleCartClick = () => {
-    if (cartItems.length === 0) {
-      alert('Shto produkte në shportë për të vazhduar!');
+  const updateQuantity = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(itemId);
       return;
     }
-    setCurrentPage('checkout');
+    setCartItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, quantity } : item
+      )
+    );
   };
 
-  const handleOrderComplete = (data: any) => {
-    const orderData = {
-      ...data,
-      orderNumber: Math.floor(Math.random() * 100) + 600,
-      total: formatPrice(total),
-      subtotal: formatPrice(subtotal),
-      deliveryFee: formatPrice(deliveryFee),
-      items: cartItems
-    };
-    setOrderData(orderData);
-    setCurrentPage('thankyou');
-  };
-
-  const handleNewOrder = () => {
-    setCurrentPage('home');
-    setOrderData(null);
+  const clearCart = () => {
     setCartItems([]);
   };
 
-  const handleBackToHome = () => {
-    setCurrentPage('home');
-  };
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // Render based on current page
-  if (currentPage === 'checkout') {
+  // Check if mobile
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
     return (
-      <CheckoutPage 
-        onBack={handleBackToHome}
-        onOrderComplete={handleOrderComplete}
+      <MobileLayout
+        currentPage={currentPage}
         cartItems={cartItems}
-        updateQuantity={updateQuantity}
-        removeFromCart={removeFromCart}
-        subtotal={subtotal}
-        deliveryFee={deliveryFee}
-        total={total}
-        formatPrice={formatPrice}
+        totalItems={totalItems}
+        totalPrice={totalPrice}
+        onAddToCart={addToCart}
+        onRemoveFromCart={removeFromCart}
+        onUpdateQuantity={updateQuantity}
+        onClearCart={clearCart}
+        onCheckout={() => setCurrentPage('checkout')}
+        onBackToHome={() => setCurrentPage('home')}
+        onOrderComplete={() => setCurrentPage('thankyou')}
+        onLogin={handleGoToLogin}
       />
     );
   }
 
-  if (currentPage === 'thankyou' && orderData) {
-    return (
-      <ThankYouPage 
-        orderData={orderData}
-        onNewOrder={handleNewOrder}
-      />
-    );
-  }
-
-  // Home page
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Mobile Layout */}
-      {isMobile ? (
-        <MobileLayout 
-          cartTotal={formatPrice(total)}
-          onCartClick={handleCartClick}
-          addToCart={addToCart}
-          cartItems={cartItems}
+    <div className="App">
+      {currentPage === 'login' && (
+        <LoginPage
+          onLogin={handleLogin}
+          onBack={() => setCurrentPage('home')}
         />
-      ) : (
-        /* Desktop Layout */
+      )}
+
+      {currentPage === 'admin' && user?.role === 'admin' && (
+        <AdminDashboard
+          user={user}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentPage === 'staff' && user?.role === 'staff' && (
+        <StaffDashboard
+          user={user}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentPage === 'driver' && user?.role === 'driver' && (
+        <DriverDashboard
+          user={user}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentPage === 'tracking' && (
+        <OrderTracking
+          orderNumber={trackingOrderNumber}
+          onBack={() => setCurrentPage('home')}
+        />
+      )}
+
+      {['home', 'cart', 'checkout', 'thankyou'].includes(currentPage) && (
         <>
-          <Navbar cartTotal={formatPrice(total)} />
-          <div className="flex">
-            <div className="flex-1">
-              <HeroSection addToCart={addToCart} />
-            </div>
-            <div className="w-96 p-6 bg-gray-50">
-              <Cart 
-                cartItems={cartItems}
-                updateQuantity={updateQuantity}
-                removeFromCart={removeFromCart}
-                subtotal={subtotal}
-                deliveryFee={deliveryFee}
-                total={total}
-                formatPrice={formatPrice}
-                onCheckout={handleCartClick}
-              />
-            </div>
-          </div>
+          <Navbar
+            currentPage={currentPage}
+            cartItems={cartItems}
+            totalItems={totalItems}
+            onAddToCart={addToCart}
+            onRemoveFromCart={removeFromCart}
+            onUpdateQuantity={updateQuantity}
+            onClearCart={clearCart}
+            onCheckout={() => setCurrentPage('checkout')}
+            onBackToHome={() => setCurrentPage('home')}
+            onLogin={handleGoToLogin}
+          />
+
+          {currentPage === 'home' && (
+            <HeroSection
+              onAddToCart={addToCart}
+              onViewCart={() => setCurrentPage('cart')}
+            />
+          )}
+
+          {currentPage === 'cart' && (
+            <Cart
+              cartItems={cartItems}
+              totalPrice={totalPrice}
+              onRemoveFromCart={removeFromCart}
+              onUpdateQuantity={updateQuantity}
+              onClearCart={clearCart}
+              onCheckout={() => setCurrentPage('checkout')}
+              onBackToHome={() => setCurrentPage('home')}
+            />
+          )}
+
+          {currentPage === 'checkout' && (
+            <CheckoutPage
+              cartItems={cartItems}
+              totalPrice={totalPrice}
+              onOrderComplete={() => setCurrentPage('thankyou')}
+              onBackToCart={() => setCurrentPage('cart')}
+            />
+          )}
+
+          {currentPage === 'thankyou' && (
+            <ThankYouPage
+              onBackToHome={() => setCurrentPage('home')}
+              onTrackOrder={handleGoToTracking}
+            />
+          )}
         </>
       )}
     </div>
