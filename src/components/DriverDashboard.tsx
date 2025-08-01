@@ -185,8 +185,8 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         }
       });
 
-      // Set up fallback refresh mechanism (3-second intervals)
-      const fallbackRefresh = createFallbackRefresh(loadDriverOrders, 3000);
+      // Set up fallback refresh mechanism (15-second intervals - less aggressive)
+      const fallbackRefresh = createFallbackRefresh(loadDriverOrders, 15000);
       fallbackRefresh.start();
 
       return () => {

@@ -40,9 +40,11 @@ export const isUserActive = (): boolean => {
 // Fallback refresh mechanism for when real-time fails
 export const createFallbackRefresh = (
   refreshFunction: () => Promise<void>,
-  intervalMs: number = 3000
+  intervalMs: number = 10000, // Increased to 10 seconds to be less aggressive
+  onNewData?: (data: any) => void
 ) => {
   let intervalId: NodeJS.Timeout | null = null;
+  let lastDataHash: string = '';
   
   const start = () => {
     if (intervalId) return; // Already running

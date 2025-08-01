@@ -236,8 +236,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       }
     });
 
-    // Set up fallback refresh mechanism (3-second intervals)
-    const fallbackRefresh = createFallbackRefresh(loadData, 3000);
+    // Set up fallback refresh mechanism (15-second intervals - less aggressive)
+    const fallbackRefresh = createFallbackRefresh(loadData, 15000);
     fallbackRefresh.start();
 
     // Cleanup subscription and fallback on unmount

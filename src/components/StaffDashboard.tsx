@@ -231,6 +231,32 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ isOpen, onClose, onConfir
   );
 };
 
+const NewOrderNotification: React.FC<{ order: any; onClose: () => void }> = ({ order, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000); // Auto-close after 5 seconds
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm animate-slide-in">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold">🆕 Porosi e re!</h3>
+        <button onClick={onClose} className="text-white hover:text-gray-200">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="text-sm">
+        <p><strong>#{order.order_number}</strong> - {order.customer_name}</p>
+        <p className="text-green-100">{order.customer_phone}</p>
+        <p className="text-green-100">{order.total.toFixed(2)}€</p>
+      </div>
+    </div>
+  );
+};
+
 const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'drivers' | 'reports'>('orders');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban'); // Default to kanban
@@ -241,18 +267,16 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Alert state
-  const [alert, setAlert] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'info'
-  });
+  // Alert states
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showErrorAlert, setShowErrorAlert] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+
+  // New order notification state
+  const [showNewOrderNotification, setShowNewOrderNotification] = useState(false);
+  const [newOrderDetails, setNewOrderDetails] = useState<any>(null);
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -268,16 +292,14 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
   });
 
   const showAlert = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
-    setAlert({
-      isOpen: true,
-      title,
-      message,
-      type
-    });
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType(type);
+    setShowSuccessAlert(true);
   };
 
   const closeAlert = () => {
-    setAlert(prev => ({ ...prev, isOpen: false }));
+    setShowSuccessAlert(false);
   };
 
   const showConfirmDialog = (title: string, message: string, onConfirm: () => void) => {
@@ -324,8 +346,16 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
       const locationSubscription = realtimeService.subscribeToLocationUpdates(locationId, (payload) => {
         console.log('Staff Dashboard received location update:', payload);
         
-        // Refresh data based on the type of change
-        if (payload.table === 'orders') {
+        // Check if this is a new order
+        if (payload.table === 'orders' && payload.eventType === 'INSERT') {
+          // Show notification for new order
+          setNewOrderDetails(payload.new);
+          // Refresh orders data in background
+          orderService.getByLocation(locationId).then(setOrders).catch(err => {
+            console.error('Error refreshing orders:', err);
+          });
+        } else if (payload.table === 'orders') {
+          // For other order changes, just refresh without notification
           orderService.getByLocation(locationId).then(setOrders).catch(err => {
             console.error('Error refreshing orders:', err);
           });
@@ -340,7 +370,7 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
       const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
         console.log('Staff Dashboard received all updates:', payload);
         
-        // Refresh data for any order or driver changes
+        // Only refresh for order changes, not show notifications for cross-location
         if (payload.table === 'orders') {
           orderService.getByLocation(locationId).then(setOrders).catch(err => {
             console.error('Error refreshing orders from all updates:', err);
@@ -352,8 +382,8 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
         }
       });
 
-      // Set up fallback refresh mechanism (3-second intervals)
-      const fallbackRefresh = createFallbackRefresh(loadData, 3000);
+      // Set up fallback refresh mechanism (15-second intervals - much less aggressive)
+      const fallbackRefresh = createFallbackRefresh(loadData, 15000);
       fallbackRefresh.start();
 
       return () => {
@@ -1234,11 +1264,11 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
 
       {/* Alert Popup */}
       <AlertPopup
-        isOpen={alert.isOpen}
+        isOpen={showSuccessAlert}
         onClose={closeAlert}
-        title={alert.title}
-        message={alert.message}
-        type={alert.type}
+        title={alertTitle}
+        message={alertMessage}
+        type={alertType}
       />
 
       {/* Confirmation Dialog */}
@@ -1249,6 +1279,11 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
         title={confirmDialog.title}
         message={confirmDialog.message}
       />
+
+      {/* New Order Notification */}
+      {newOrderDetails && (
+        <NewOrderNotification order={newOrderDetails} onClose={() => setNewOrderDetails(null)} />
+      )}
     </div>
   );
 };
