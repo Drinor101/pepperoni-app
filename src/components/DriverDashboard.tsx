@@ -191,13 +191,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         message: 'Statusi u ndryshua në "Në delivery" dhe stafi do ta shohë në kanban view.',
         type: 'success',
       });
-      
-      // Force refresh data to ensure real-time updates
-      if (user?.id) {
-        setTimeout(() => {
-          orderService.getByDriver(user.id!).then(setDeliveries);
-        }, 500);
-      }
     } catch (err) {
       console.error('Error accepting order:', err);
       setAlert({
@@ -207,11 +200,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         message: 'Gabim në pranimin e porosisë',
         type: 'error',
       });
-      
-      // Reload data if update failed
-      if (user?.id) {
-        orderService.getByDriver(user.id).then(setDeliveries);
-      }
     }
   };
 
@@ -235,13 +223,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         message: 'Statusi u ndryshua në "Përfunduar" dhe stafi do ta shohë në kanban view.',
         type: 'success',
       });
-      
-      // Force refresh data to ensure real-time updates
-      if (user?.id) {
-        setTimeout(() => {
-          orderService.getByDriver(user.id!).then(setDeliveries);
-        }, 500);
-      }
     } catch (err) {
       console.error('Error delivering order:', err);
       setAlert({
@@ -251,11 +232,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         message: 'Gabim në dorëzimin e porosisë',
         type: 'error',
       });
-      
-      // Reload data if update failed
-      if (user?.id) {
-        orderService.getByDriver(user.id).then(setDeliveries);
-      }
     }
   };
 

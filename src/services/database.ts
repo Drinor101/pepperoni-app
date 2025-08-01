@@ -492,6 +492,8 @@ class RealtimeStateManager {
   ): () => void {
     const subscriptionKey = `${tableName}-${JSON.stringify(filters || {})}`;
     
+    console.log(`Setting up subscription for ${tableName} with filters:`, filters);
+    
     // Add callback to the set
     if (!this.callbacks.has(subscriptionKey)) {
       this.callbacks.set(subscriptionKey, new Set());
@@ -500,6 +502,9 @@ class RealtimeStateManager {
 
     // Create subscription if it doesn't exist
     if (!this.subscriptions.has(subscriptionKey)) {
+      const filterString = filters ? this.buildFilterString(filters) : undefined;
+      console.log(`Creating channel for ${tableName} with filter:`, filterString);
+      
       const channel = supabase
         .channel(`table-${subscriptionKey}-${Date.now()}`)
         .on('postgres_changes', 
@@ -507,15 +512,18 @@ class RealtimeStateManager {
             event: '*', 
             schema: 'public', 
             table: tableName,
-            ...(filters && { filter: this.buildFilterString(filters) })
+            ...(filterString && { filter: filterString })
           }, 
           (payload) => {
-            console.log(`${tableName} real-time event:`, payload);
+            console.log(`${tableName} real-time event received:`, payload);
             this.notifyCallbacks(subscriptionKey, payload);
           }
         )
         .subscribe((status) => {
           console.log(`${tableName} subscription status:`, status);
+          if (status === 'SUBSCRIBED') {
+            console.log(`Successfully subscribed to ${tableName} changes`);
+          }
         });
 
       this.subscriptions.set(subscriptionKey, channel);
@@ -647,7 +655,6 @@ export const useOptimizedRealtimeData = <T>(
   const [error, setError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const lastDataRef = useRef<T[]>([]);
-  const isInitializedRef = useRef(false);
 
   // Fetch data function
   const fetchData = useCallback(async () => {
@@ -680,26 +687,27 @@ export const useOptimizedRealtimeData = <T>(
 
   // Setup real-time subscription
   useEffect(() => {
-    if (!isInitializedRef.current) {
-      fetchData();
-      isInitializedRef.current = true;
-    }
+    console.log(`Setting up real-time subscription for ${subscriptionConfig.table} with filters:`, subscriptionConfig.filters);
+    
+    // Initial data fetch
+    fetchData();
 
     // Setup real-time subscription
     const unsubscribe = realtimeService.manager.subscribeToTable(
       subscriptionConfig.table,
       (payload) => {
-        console.log(`${subscriptionConfig.table} real-time update:`, payload);
+        console.log(`${subscriptionConfig.table} real-time update received:`, payload);
+        console.log(`Event type: ${payload.eventType}, Table: ${payload.table}`);
         
-        // Handle different event types
+        // Handle different event types immediately
         if (payload.eventType === 'INSERT' && subscriptionConfig.onNewData) {
+          console.log('Calling onNewData callback with:', payload.new);
           subscriptionConfig.onNewData(payload.new);
         }
         
-        // Refresh data after a short delay to ensure database consistency
-        setTimeout(() => {
-          fetchData();
-        }, 100);
+        // Immediately fetch fresh data for all events
+        console.log('Fetching fresh data after real-time event...');
+        fetchData();
       },
       subscriptionConfig.filters
     );
@@ -708,19 +716,13 @@ export const useOptimizedRealtimeData = <T>(
 
     // Cleanup function
     return () => {
+      console.log(`Cleaning up subscription for ${subscriptionConfig.table}`);
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
     };
-  }, dependencies);
-
-  // Refetch data when dependencies change
-  useEffect(() => {
-    if (isInitializedRef.current) {
-      fetchData();
-    }
-  }, dependencies);
+  }, [...dependencies, subscriptionConfig.table, JSON.stringify(subscriptionConfig.filters)]);
 
   return {
     data,

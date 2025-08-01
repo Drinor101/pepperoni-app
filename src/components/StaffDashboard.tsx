@@ -394,23 +394,9 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
       );
       setShowDriverModal(false);
       setSelectedOrder(null);
-      
-      // Force refresh data to ensure real-time updates
-      if (user?.location_id) {
-        setTimeout(() => {
-          orderService.getByLocation(user.location_id!).then(setOrders);
-          driverService.getByLocation(user.location_id!).then(setDrivers);
-        }, 500);
-      }
     } catch (err) {
       console.error('Error assigning driver:', err);
       showAlert('Gabim në caktimin e shoferit', 'Ndodhi një gabim gjatë caktimit të shoferit. Ju lutem provoni përsëri.', 'error');
-      
-      // Reload data if update failed
-      if (user?.location_id) {
-        orderService.getByLocation(user.location_id).then(setOrders);
-        driverService.getByLocation(user.location_id).then(setDrivers);
-      }
     }
   };
 
@@ -429,11 +415,6 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
         } catch (err) {
           console.error('Error deleting order:', err);
           showAlert('Gabim në fshirjen e porosisë', 'Ndodhi një gabim gjatë fshirjes së porosisë. Ju lutem provoni përsëri.', 'error');
-          
-          // Reload data if deletion failed
-          if (user?.location_id) {
-            orderService.getByLocation(user.location_id).then(setOrders);
-          }
         }
       }
     );
