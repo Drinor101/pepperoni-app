@@ -230,7 +230,11 @@ function App() {
   // Check if mobile
   const isMobile = window.innerWidth <= 768;
 
-  if (isMobile) {
+  // For mobile, only show MobileLayout for the main customer-facing pages
+  // Admin, staff, driver, and login pages should use the regular layout
+  const shouldUseMobileLayout = isMobile && !['/login', '/admin', '/staff', '/driver', '/test'].includes(window.location.pathname);
+
+  if (shouldUseMobileLayout) {
     return (
       <MobileLayout
         cartTotal={totalItems.toString()}
