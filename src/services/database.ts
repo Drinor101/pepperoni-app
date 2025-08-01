@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 type User = Database['public']['Tables']['users']['Row']
 type Location = Database['public']['Tables']['locations']['Row']
@@ -430,146 +431,302 @@ export const orderService = {
   }
 }
 
-// Real-time subscriptions
-export const realtimeService = {
-  subscribeToOrders(callback: (payload: any) => void) {
-    const channel = supabase
-      .channel(`orders-updates-${Date.now()}`)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' }, 
-        (payload) => {
-          console.log('Orders real-time event:', payload);
-          callback(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('Orders subscription status:', status);
-      });
-    
-    return channel;
-  },
+// Optimized Real-time State Management
+class RealtimeStateManager {
+  private static instance: RealtimeStateManager;
+  private subscriptions: Map<string, any> = new Map();
+  private callbacks: Map<string, Set<(data: any) => void>> = new Map();
+  private isConnected: boolean = false;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
+  private reconnectDelay: number = 1000;
 
-  subscribeToDrivers(callback: (payload: any) => void) {
-    const channel = supabase
-      .channel(`drivers-updates-${Date.now()}`)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'drivers' }, 
-        (payload) => {
-          console.log('Drivers real-time event:', payload);
-          callback(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('Drivers subscription status:', status);
-      });
-    
-    return channel;
-  },
-
-  subscribeToStaff(callback: (payload: any) => void) {
-    const channel = supabase
-      .channel(`staff-updates-${Date.now()}`)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'staff' }, 
-        (payload) => {
-          console.log('Staff real-time event:', payload);
-          callback(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('Staff subscription status:', status);
-      });
-    
-    return channel;
-  },
-
-  // Enhanced subscription for location-specific updates
-  subscribeToLocationUpdates(locationId: string, callback: (payload: any) => void) {
-    const channel = supabase
-      .channel(`location-${locationId}-updates-${Date.now()}`)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'orders',
-          filter: `location_id=eq.${locationId}`
-        }, 
-        (payload) => {
-          console.log('Location orders real-time event:', payload);
-          callback(payload);
-        }
-      )
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'drivers',
-          filter: `location_id=eq.${locationId}`
-        }, 
-        (payload) => {
-          console.log('Location drivers real-time event:', payload);
-          callback(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('Location subscription status:', status);
-      });
-    
-    return channel;
-  },
-
-  // Subscription for driver-specific updates
-  subscribeToDriverUpdates(driverId: string, callback: (payload: any) => void) {
-    const channel = supabase
-      .channel(`driver-${driverId}-updates-${Date.now()}`)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'orders',
-          filter: `assigned_driver_id=eq.${driverId}`
-        }, 
-        (payload) => {
-          console.log('Driver orders real-time event:', payload);
-          callback(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('Driver subscription status:', status);
-      });
-    
-    return channel;
-  },
-
-  // Comprehensive subscription for all order and driver changes
-  subscribeToAllUpdates(callback: (payload: any) => void) {
-    const channel = supabase
-      .channel(`all-updates-${Date.now()}`)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' }, 
-        (payload) => {
-          console.log('All updates - Orders event:', payload);
-          callback(payload);
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'drivers' }, 
-        (payload) => {
-          console.log('All updates - Drivers event:', payload);
-          callback(payload);
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'staff' }, 
-        (payload) => {
-          console.log('All updates - Staff event:', payload);
-          callback(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('All updates subscription status:', status);
-      });
-    
-    return channel;
+  private constructor() {
+    this.setupConnectionMonitoring();
   }
-} 
+
+  static getInstance(): RealtimeStateManager {
+    if (!RealtimeStateManager.instance) {
+      RealtimeStateManager.instance = new RealtimeStateManager();
+    }
+    return RealtimeStateManager.instance;
+  }
+
+  private setupConnectionMonitoring() {
+    // Monitor connection status - using channel events instead of realtime events
+    const monitorChannel = supabase.channel('connection-monitor')
+      .on('system', { event: 'connected' }, () => {
+        console.log('Realtime connected');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+      })
+      .on('system', { event: 'disconnected' }, () => {
+        console.log('Realtime disconnected');
+        this.isConnected = false;
+        this.attemptReconnect();
+      })
+      .subscribe();
+  }
+
+  private attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+    setTimeout(() => {
+      if (!this.isConnected) {
+        this.attemptReconnect();
+      }
+    }, this.reconnectDelay * this.reconnectAttempts);
+  }
+
+  // Subscribe to specific table changes with optimized filtering
+  subscribeToTable(
+    tableName: string, 
+    callback: (payload: any) => void,
+    filters?: { [key: string]: any }
+  ): () => void {
+    const subscriptionKey = `${tableName}-${JSON.stringify(filters || {})}`;
+    
+    // Add callback to the set
+    if (!this.callbacks.has(subscriptionKey)) {
+      this.callbacks.set(subscriptionKey, new Set());
+    }
+    this.callbacks.get(subscriptionKey)!.add(callback);
+
+    // Create subscription if it doesn't exist
+    if (!this.subscriptions.has(subscriptionKey)) {
+      const channel = supabase
+        .channel(`table-${subscriptionKey}-${Date.now()}`)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: tableName,
+            ...(filters && { filter: this.buildFilterString(filters) })
+          }, 
+          (payload) => {
+            console.log(`${tableName} real-time event:`, payload);
+            this.notifyCallbacks(subscriptionKey, payload);
+          }
+        )
+        .subscribe((status) => {
+          console.log(`${tableName} subscription status:`, status);
+        });
+
+      this.subscriptions.set(subscriptionKey, channel);
+    }
+
+    // Return unsubscribe function
+    return () => {
+      const callbacks = this.callbacks.get(subscriptionKey);
+      if (callbacks) {
+        callbacks.delete(callback);
+        
+        // If no more callbacks, remove subscription
+        if (callbacks.size === 0) {
+          const subscription = this.subscriptions.get(subscriptionKey);
+          if (subscription) {
+            subscription.unsubscribe();
+            this.subscriptions.delete(subscriptionKey);
+          }
+          this.callbacks.delete(subscriptionKey);
+        }
+      }
+    };
+  }
+
+  private buildFilterString(filters: { [key: string]: any }): string {
+    return Object.entries(filters)
+      .map(([key, value]) => `${key}=eq.${value}`)
+      .join(',');
+  }
+
+  private notifyCallbacks(subscriptionKey: string, payload: any) {
+    const callbacks = this.callbacks.get(subscriptionKey);
+    if (callbacks) {
+      callbacks.forEach(callback => {
+        try {
+          callback(payload);
+        } catch (error) {
+          console.error('Error in realtime callback:', error);
+        }
+      });
+    }
+  }
+
+  // Cleanup all subscriptions
+  cleanup() {
+    this.subscriptions.forEach((subscription) => {
+      subscription.unsubscribe();
+    });
+    this.subscriptions.clear();
+    this.callbacks.clear();
+  }
+}
+
+// Optimized Real-time Service
+export const realtimeService = {
+  manager: RealtimeStateManager.getInstance(),
+
+  // Subscribe to orders with optional location filter
+  subscribeToOrders(callback: (payload: any) => void, locationId?: string) {
+    const filters = locationId ? { location_id: locationId } : undefined;
+    return this.manager.subscribeToTable('orders', callback, filters);
+  },
+
+  // Subscribe to drivers with optional location filter
+  subscribeToDrivers(callback: (payload: any) => void, locationId?: string) {
+    const filters = locationId ? { location_id: locationId } : undefined;
+    return this.manager.subscribeToTable('drivers', callback, filters);
+  },
+
+  // Subscribe to staff with optional location filter
+  subscribeToStaff(callback: (payload: any) => void, locationId?: string) {
+    const filters = locationId ? { location_id: locationId } : undefined;
+    return this.manager.subscribeToTable('staff', callback, filters);
+  },
+
+  // Subscribe to driver-specific orders
+  subscribeToDriverOrders(driverId: string, callback: (payload: any) => void) {
+    return this.manager.subscribeToTable('orders', callback, { assigned_driver_id: driverId });
+  },
+
+  // Subscribe to all relevant tables (for admin dashboard)
+  subscribeToAllUpdates(callback: (payload: any) => void) {
+    const unsubscribers: (() => void)[] = [];
+    
+    unsubscribers.push(this.manager.subscribeToTable('orders', callback));
+    unsubscribers.push(this.manager.subscribeToTable('drivers', callback));
+    unsubscribers.push(this.manager.subscribeToTable('staff', callback));
+    
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  },
+
+  // Legacy methods for backward compatibility
+  subscribeToLocationUpdates(locationId: string, callback: (payload: any) => void) {
+    const unsubscribers: (() => void)[] = [];
+    
+    unsubscribers.push(this.manager.subscribeToTable('orders', callback, { location_id: locationId }));
+    unsubscribers.push(this.manager.subscribeToTable('drivers', callback, { location_id: locationId }));
+    
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  },
+
+  subscribeToDriverUpdates(driverId: string, callback: (payload: any) => void) {
+    return this.manager.subscribeToTable('orders', callback, { assigned_driver_id: driverId });
+  },
+
+  // Cleanup method
+  cleanup() {
+    this.manager.cleanup();
+  }
+}
+
+// Custom Hook for Optimized State Management
+
+export const useOptimizedRealtimeData = <T>(
+  fetchFunction: () => Promise<T[]>,
+  subscriptionConfig: {
+    table: string;
+    filters?: { [key: string]: any };
+    onNewData?: (data: T) => void;
+  },
+  dependencies: any[] = []
+) => {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastDataRef = useRef<T[]>([]);
+  const isInitializedRef = useRef(false);
+
+  // Fetch data function
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const newData = await fetchFunction();
+      
+      // Only update if data has actually changed
+      if (hasDataChanged(lastDataRef.current, newData)) {
+        lastDataRef.current = newData;
+        setData(newData);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Gabim në ngarkimin e të dhënave');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchFunction]);
+
+  // Optimistic update function
+  const optimisticUpdate = useCallback((updater: (prevData: T[]) => T[]) => {
+    setData(prevData => {
+      const newData = updater(prevData);
+      lastDataRef.current = newData;
+      return newData;
+    });
+  }, []);
+
+  // Setup real-time subscription
+  useEffect(() => {
+    if (!isInitializedRef.current) {
+      fetchData();
+      isInitializedRef.current = true;
+    }
+
+    // Setup real-time subscription
+    const unsubscribe = realtimeService.manager.subscribeToTable(
+      subscriptionConfig.table,
+      (payload) => {
+        console.log(`${subscriptionConfig.table} real-time update:`, payload);
+        
+        // Handle different event types
+        if (payload.eventType === 'INSERT' && subscriptionConfig.onNewData) {
+          subscriptionConfig.onNewData(payload.new);
+        }
+        
+        // Refresh data after a short delay to ensure database consistency
+        setTimeout(() => {
+          fetchData();
+        }, 100);
+      },
+      subscriptionConfig.filters
+    );
+
+    unsubscribeRef.current = unsubscribe;
+
+    // Cleanup function
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, dependencies);
+
+  // Refetch data when dependencies change
+  useEffect(() => {
+    if (isInitializedRef.current) {
+      fetchData();
+    }
+  }, dependencies);
+
+  return {
+    data,
+    loading,
+    error,
+    refetch: fetchData,
+    optimisticUpdate
+  };
+}; 

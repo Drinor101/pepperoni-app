@@ -29,7 +29,7 @@ import {
   Check
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService } from '../services/database';
+import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services/database';
 
 interface User {
   username: string;
@@ -315,83 +315,46 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
     setConfirmDialog(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Load data from database
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        if (user?.location_id) {
-          const [ordersData, driversData] = await Promise.all([
-            orderService.getByLocation(user.location_id),
-            driverService.getByLocation(user.location_id)
-          ]);
-          setOrders(ordersData);
-          setDrivers(driversData);
-        }
-      } catch (err) {
-        console.error('Error loading data:', err);
-        setError('Gabim në ngarkimin e të dhënave');
-      } finally {
-        setLoading(false);
+  // Use optimized real-time data hooks
+  const { data: ordersData, loading: ordersLoading, error: ordersError, optimisticUpdate: optimisticUpdateOrders } = useOptimizedRealtimeData(
+    () => user?.location_id ? orderService.getByLocation(user.location_id) : Promise.resolve([]),
+    { 
+      table: 'orders',
+      filters: user?.location_id ? { location_id: user.location_id } : undefined,
+      onNewData: (newOrder) => {
+        // Show notification for new order
+        setNewOrderDetails(newOrder);
       }
-    };
+    },
+    [user?.location_id]
+  );
 
-    loadData();
+  const { data: driversData, loading: driversLoading, error: driversError, optimisticUpdate: optimisticUpdateDrivers } = useOptimizedRealtimeData(
+    () => user?.location_id ? driverService.getByLocation(user.location_id) : Promise.resolve([]),
+    { 
+      table: 'drivers',
+      filters: user?.location_id ? { location_id: user.location_id } : undefined
+    },
+    [user?.location_id]
+  );
 
-    // Set up enhanced real-time subscriptions
-    if (user?.location_id) {
-      const locationId = user.location_id;
-  
-      // Subscribe to location-specific updates
-      const locationSubscription = realtimeService.subscribeToLocationUpdates(locationId, (payload) => {
-        console.log('Staff Dashboard received location update:', payload);
-        
-        // Check if this is a new order
-        if (payload.table === 'orders' && payload.eventType === 'INSERT') {
-          // Show notification for new order
-          setNewOrderDetails(payload.new);
-          // Refresh orders data in background
-          orderService.getByLocation(locationId).then(setOrders).catch(err => {
-            console.error('Error refreshing orders:', err);
-          });
-        } else if (payload.table === 'orders') {
-          // For other order changes, just refresh without notification
-          orderService.getByLocation(locationId).then(setOrders).catch(err => {
-            console.error('Error refreshing orders:', err);
-          });
-        } else if (payload.table === 'drivers') {
-          driverService.getByLocation(locationId).then(setDrivers).catch(err => {
-            console.error('Error refreshing drivers:', err);
-          });
-        }
-      });
+  // Update local state when data changes
+  useEffect(() => {
+    setOrders(ordersData);
+  }, [ordersData]);
 
-      // Also subscribe to all updates to catch cross-location changes
-      const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
-        console.log('Staff Dashboard received all updates:', payload);
-        
-        // Only refresh for order changes, not show notifications for cross-location
-        if (payload.table === 'orders') {
-          orderService.getByLocation(locationId).then(setOrders).catch(err => {
-            console.error('Error refreshing orders from all updates:', err);
-          });
-        } else if (payload.table === 'drivers') {
-          driverService.getByLocation(locationId).then(setDrivers).catch(err => {
-            console.error('Error refreshing drivers from all updates:', err);
-          });
-        }
-      });
+  useEffect(() => {
+    setDrivers(driversData);
+  }, [driversData]);
 
-      return () => {
-        if (locationSubscription) {
-          locationSubscription.unsubscribe();
-        }
-        if (allUpdatesSubscription) {
-          allUpdatesSubscription.unsubscribe();
-        }
-      };
-    }
-  }, [user?.location_id]);
+  // Handle loading and error states
+  useEffect(() => {
+    setLoading(ordersLoading || driversLoading);
+  }, [ordersLoading, driversLoading]);
+
+  useEffect(() => {
+    setError(ordersError || driversError);
+  }, [ordersError, driversError]);
 
   const openDriverModal = (order: Order) => {
     setSelectedOrder(order);
@@ -405,7 +368,7 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
       // Update local state immediately for better UX
       const driver = drivers.find(d => d.id === driverId);
       
-      setOrders(prev => prev.map(order => 
+      optimisticUpdateOrders(prev => prev.map(order => 
         order.id === selectedOrder.id ? { 
           ...order, 
           status: 'konfirmuar',
@@ -458,7 +421,7 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
       async () => {
         try {
           // Update local state immediately for better UX
-          setOrders(prev => prev.filter(order => order.id !== orderId));
+          optimisticUpdateOrders(prev => prev.filter(order => order.id !== orderId));
           
           // Delete from database
           await orderService.delete(orderId);

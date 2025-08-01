@@ -21,7 +21,7 @@ import {
   List
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService } from '../services/database';
+import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services/database';
 
 interface User {
   username: string;
@@ -140,61 +140,29 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
     type: 'info',
   });
 
-  // Load driver's orders from database
+  // Use optimized real-time data hook for driver's orders
+  const { data: deliveriesData, loading: deliveriesLoading, error: deliveriesError, optimisticUpdate: optimisticUpdateDeliveries } = useOptimizedRealtimeData(
+    () => user?.id ? orderService.getByDriver(user.id) : Promise.resolve([]),
+    { 
+      table: 'orders',
+      filters: user?.id ? { assigned_driver_id: user.id } : undefined
+    },
+    [user?.id]
+  );
+
+  // Update local state when data changes
   useEffect(() => {
-    const loadDriverOrders = async () => {
-      try {
-        setLoading(true);
-        if (user?.id) {
-          const ordersData = await orderService.getByDriver(user.id);
-          setDeliveries(ordersData);
-        }
-      } catch (err) {
-        console.error('Error loading driver orders:', err);
-        setError('Gabim në ngarkimin e porosive');
-      } finally {
-        setLoading(false);
-      }
-    };
+    setDeliveries(deliveriesData);
+  }, [deliveriesData]);
 
-    loadDriverOrders();
+  // Handle loading and error states
+  useEffect(() => {
+    setLoading(deliveriesLoading);
+  }, [deliveriesLoading]);
 
-    // Set up enhanced real-time subscription for driver's orders
-    if (user?.id) {
-      const driverId = user.id;
-  
-      // Subscribe to driver-specific updates
-      const driverSubscription = realtimeService.subscribeToDriverUpdates(driverId, (payload) => {
-        console.log('Driver Dashboard received driver update:', payload);
-        
-        // Refresh driver's orders
-        orderService.getByDriver(driverId).then(setDeliveries).catch(err => {
-          console.error('Error refreshing driver orders:', err);
-        });
-      });
-
-      // Also subscribe to all updates to catch any order changes
-      const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
-        console.log('Driver Dashboard received all updates:', payload);
-        
-        // Refresh driver's orders for any order changes
-        if (payload.table === 'orders') {
-          orderService.getByDriver(driverId).then(setDeliveries).catch(err => {
-            console.error('Error refreshing driver orders from all updates:', err);
-          });
-        }
-      });
-
-      return () => {
-        if (driverSubscription) {
-          driverSubscription.unsubscribe();
-        }
-        if (allUpdatesSubscription) {
-          allUpdatesSubscription.unsubscribe();
-        }
-      };
-    }
-  }, [user?.id]);
+  useEffect(() => {
+    setError(deliveriesError);
+  }, [deliveriesError]);
 
   // Get driver's current location
   useEffect(() => {
@@ -206,7 +174,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
   const acceptOrder = async (deliveryId: string) => {
     try {
       // Update local state immediately for better UX
-      setDeliveries(prev => prev.map(delivery => 
+      optimisticUpdateDeliveries(prev => prev.map(delivery => 
         delivery.id === deliveryId ? { ...delivery, status: 'ne_delivery' } : delivery
       ));
       
@@ -250,7 +218,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
   const deliverOrder = async (deliveryId: string) => {
     try {
       // Update local state immediately for better UX
-      setDeliveries(prev => prev.map(delivery => 
+      optimisticUpdateDeliveries(prev => prev.map(delivery => 
         delivery.id === deliveryId ? { ...delivery, status: 'perfunduar' } : delivery
       ));
       

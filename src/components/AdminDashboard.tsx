@@ -24,7 +24,7 @@ import {
   FileText
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { authService, locationService, orderService, driverService, realtimeService } from '../services/database';
+import { authService, locationService, orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services/database';
 
 interface Driver {
   id: string;
@@ -191,58 +191,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmOnConfirm, setConfirmOnConfirm] = useState<(() => void) | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [locationsData, ordersData, driversData, staffData] = await Promise.all([
-          locationService.getAll(),
-          orderService.getAll(),
-          driverService.getAll(),
-          authService.getAllStaff()
-        ]);
+  // Use optimized real-time data hooks
+  const { data: ordersData, loading: ordersLoading, error: ordersError, optimisticUpdate: optimisticUpdateOrders } = useOptimizedRealtimeData(
+    orderService.getAll,
+    { table: 'orders' }
+  );
 
+  const { data: driversData, loading: driversLoading, error: driversError, optimisticUpdate: optimisticUpdateDrivers } = useOptimizedRealtimeData(
+    driverService.getAll,
+    { table: 'drivers' }
+  );
+
+  const { data: staffData, loading: staffLoading, error: staffError, optimisticUpdate: optimisticUpdateStaff } = useOptimizedRealtimeData(
+    authService.getAllStaff,
+    { table: 'staff' }
+  );
+
+  // Load locations once (they don't change often)
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const locationsData = await locationService.getAll();
         setLocations(locationsData);
-        setOrders(ordersData);
-        setDrivers(driversData);
-        setStaff(staffData);
       } catch (err) {
-        console.error('Error loading data:', err);
-        setError('Gabim në ngarkimin e të dhënave');
-      } finally {
-        setLoading(false);
+        console.error('Error loading locations:', err);
       }
     };
-
-    loadData();
-
-    // Set up comprehensive real-time subscription for all updates
-    const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
-      console.log('Admin Dashboard received real-time update:', payload);
-      
-      // Refresh data based on the type of change
-      if (payload.table === 'orders') {
-        orderService.getAll().then(setOrders).catch(err => {
-          console.error('Error refreshing orders:', err);
-        });
-      } else if (payload.table === 'drivers') {
-        driverService.getAll().then(setDrivers).catch(err => {
-          console.error('Error refreshing drivers:', err);
-        });
-      } else if (payload.table === 'staff') {
-        authService.getAllStaff().then(setStaff).catch(err => {
-          console.error('Error refreshing staff:', err);
-        });
-      }
-    });
-
-      // Cleanup subscription on unmount
-  return () => {
-    if (allUpdatesSubscription) {
-      allUpdatesSubscription.unsubscribe();
-    }
-  };
+    loadLocations();
   }, []);
+
+  // Update local state when data changes
+  useEffect(() => {
+    setOrders(ordersData);
+  }, [ordersData]);
+
+  useEffect(() => {
+    setDrivers(driversData);
+  }, [driversData]);
+
+  useEffect(() => {
+    setStaff(staffData);
+  }, [staffData]);
+
+  // Handle loading and error states
+  useEffect(() => {
+    setLoading(ordersLoading || driversLoading || staffLoading);
+  }, [ordersLoading, driversLoading, staffLoading]);
+
+  useEffect(() => {
+    setError(ordersError || driversError || staffError);
+  }, [ordersError, driversError, staffError]);
 
     const handleAddStaff = async () => {
     try {
@@ -255,7 +253,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       });
       
       // Update local state immediately for better UX
-      setStaff(prev => [...prev, staffData]);
+      optimisticUpdateStaff(prev => [...prev, staffData]);
       setShowAddStaffModal(false);
       setNewStaff({ username: '', password: '', name: '', phone: '', location_id: '' });
       
@@ -277,7 +275,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       const driverData = await driverService.create(newDriver);
       
       // Update local state immediately for better UX
-      setDrivers(prev => [...prev, driverData]);
+      optimisticUpdateDrivers(prev => [...prev, driverData]);
       setShowAddDriverModal(false);
       setNewDriver({ username: '', password: '', name: '', phone: '', location_id: '' });
       
@@ -300,7 +298,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     setConfirmOnConfirm(() => async () => {
       try {
         // Update local state immediately for better UX
-        setStaff(prev => prev.filter(staff => staff.id !== staffId));
+        optimisticUpdateStaff(prev => prev.filter(staff => staff.id !== staffId));
         
         await authService.deleteStaff(staffId);
         setAlertTitle('Stafi u fshi me sukses!');
@@ -326,7 +324,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     setConfirmOnConfirm(() => async () => {
       try {
         // Update local state immediately for better UX
-        setDrivers(prev => prev.filter(driver => driver.id !== driverId));
+        optimisticUpdateDrivers(prev => prev.filter(driver => driver.id !== driverId));
         
         await driverService.delete(driverId);
         setAlertTitle('Shoferi u fshi me sukses!');
@@ -386,7 +384,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       await authService.updateStaff(editingStaff.id, updateData);
       
       // Update local state
-      setStaff(prev => prev.map(s => 
+      optimisticUpdateStaff(prev => prev.map(s => 
         s.id === editingStaff.id 
           ? { ...s, name: editingStaff.name, phone: editingStaff.phone, location_id: editingStaff.location_id }
           : s
@@ -424,7 +422,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       await driverService.update(editingDriver.id, updateData);
       
       // Update local state
-      setDrivers(prev => prev.map(d => 
+      optimisticUpdateDrivers(prev => prev.map(d => 
         d.id === editingDriver.id 
           ? { ...d, name: editingDriver.name, phone: editingDriver.phone, location_id: editingDriver.location_id }
           : d

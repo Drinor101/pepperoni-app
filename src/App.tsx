@@ -12,7 +12,7 @@ import StaffDashboard from './components/StaffDashboard';
 
 import MobileLayout from './components/MobileLayout';
 import DatabaseTest from './components/DatabaseTest';
-import { authService } from './services/database';
+import { authService, realtimeService } from './services/database';
 import { AlertCircle, Info, CheckCircle } from 'lucide-react';
 
 type AppState = 'home' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'test';
@@ -128,19 +128,24 @@ function App() {
         const userData = JSON.parse(savedUser);
         setUser(userData);
         
-                       // Redirect to appropriate dashboard based on role
-               if (userData.role === 'admin') {
-                 navigate('/admin');
-               } else if (userData.role === 'staff') {
-                 navigate('/staff');
-               } else if (userData.role === 'driver') {
-                 navigate('/driver');
-               }
+        // Redirect to appropriate dashboard based on role
+        if (userData.role === 'admin') {
+          navigate('/admin');
+        } else if (userData.role === 'staff') {
+          navigate('/staff');
+        } else if (userData.role === 'driver') {
+          navigate('/driver');
+        }
       } catch (error) {
         console.error('Error parsing saved user data:', error);
         localStorage.removeItem('pepperoni_user');
       }
     }
+
+    // Cleanup real-time subscriptions on app unmount
+    return () => {
+      realtimeService.cleanup();
+    };
   }, []);
 
   const handleLogin = async (username: string, password: string) => {
@@ -183,6 +188,10 @@ function App() {
     // Clear user from localStorage and state
     localStorage.removeItem('pepperoni_user');
     setUser(null);
+    
+    // Cleanup real-time subscriptions
+    realtimeService.cleanup();
+    
     navigate('/');
   };
 
