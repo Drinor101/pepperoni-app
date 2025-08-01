@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, LogIn } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
 
 interface CartItem {
@@ -15,10 +15,9 @@ interface MobileLayoutProps {
   onCartClick: () => void;
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   cartItems: CartItem[];
-  onLogin: () => void;
 }
 
-const MobileLayout: React.FC<MobileLayoutProps> = ({ cartTotal, onCartClick, addToCart, cartItems, onLogin }) => {
+const MobileLayout: React.FC<MobileLayoutProps> = ({ cartTotal, onCartClick, addToCart, cartItems }) => {
   const [activeCategory, setActiveCategory] = useState('New offers!');
 
   const categories = [
@@ -73,17 +72,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ cartTotal, onCartClick, add
             alt="Pepperoni Pizza Logo" 
             className="h-12 w-auto"
           />
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={onLogin}
-              className="text-white hover:text-gray-200 transition-colors"
-            >
-              <LogIn className="w-5 h-5" />
-            </button>
-            <div className="flex items-center space-x-2 text-white">
-              <ShoppingCart className="w-5 h-5" />
-              <span className="font-bold text-lg">{cartTotal}</span>
-            </div>
+          <div className="flex items-center space-x-2 text-white">
+            <ShoppingCart className="w-5 h-5" />
+            <span className="font-bold text-lg">{cartTotal}</span>
           </div>
         </div>
       </nav>

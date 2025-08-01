@@ -1,103 +1,178 @@
 import React, { useState, useEffect } from 'react';
-import { locationService, orderService, driverService } from '../services/database';
+import { orderService, driverService, authService, locationService, realtimeService } from '../services/database';
 
 const DatabaseTest: React.FC = () => {
-  const [testResults, setTestResults] = useState<{
-    locations: any[];
-    orders: any[];
-    drivers: any[];
-    error?: string;
-  }>({ locations: [], orders: [], drivers: [] });
+  const [orders, setOrders] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([]);
 
-  const runTests = async () => {
+  const addLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setRealtimeLogs(prev => [...prev, `${timestamp}: ${message}`]);
+  };
+
+  const testRealtime = async () => {
+    addLog('Setting up real-time subscriptions...');
+    
+    // Test orders subscription
+    const ordersSubscription = realtimeService.subscribeToOrders((payload) => {
+      addLog(`Orders update: ${payload.event} on order ${payload.new?.id || payload.old?.id}`);
+      orderService.getAll().then(setOrders);
+    });
+
+    // Test drivers subscription
+    const driversSubscription = realtimeService.subscribeToDrivers((payload) => {
+      addLog(`Drivers update: ${payload.event} on driver ${payload.new?.id || payload.old?.id}`);
+      driverService.getAll().then(setDrivers);
+    });
+
+    // Test all updates subscription
+    const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
+      addLog(`All updates: ${payload.event} on ${payload.table} ${payload.new?.id || payload.old?.id}`);
+    });
+
+    // Cleanup after 30 seconds
+    setTimeout(() => {
+      addLog('Cleaning up real-time subscriptions...');
+      ordersSubscription.unsubscribe();
+      driversSubscription.unsubscribe();
+      allUpdatesSubscription.unsubscribe();
+    }, 30000);
+
+    return () => {
+      ordersSubscription.unsubscribe();
+      driversSubscription.unsubscribe();
+      allUpdatesSubscription.unsubscribe();
+    };
+  };
+
+  const loadAllData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const [locations, orders, drivers] = await Promise.all([
-        locationService.getAll(),
+      const [ordersData, driversData, staffData, locationsData] = await Promise.all([
         orderService.getAll(),
-        driverService.getAll()
+        driverService.getAll(),
+        authService.getAllStaff(),
+        locationService.getAll()
       ]);
-
-      setTestResults({ locations, orders, drivers });
-    } catch (error) {
-      console.error('Database test failed:', error);
-      setTestResults(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Unknown error' }));
+      setOrders(ordersData);
+      setDrivers(driversData);
+      setStaff(staffData);
+      setLocations(locationsData);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Gabim në ngarkimin e të dhënave');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    runTests();
+    loadAllData();
   }, []);
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Database Connection Test</h2>
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Database Test</h1>
       
-      {loading && (
-        <div className="text-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Testing database connection...</p>
-        </div>
-      )}
-
-      {testResults.error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md mb-4">
-          <strong>Error:</strong> {testResults.error}
-          <p className="text-sm mt-1">
-            Make sure you have:
-            <br />1. Created a Supabase project
-            <br />2. Run the SQL schema
-            <br />3. Set up environment variables
-          </p>
-        </div>
-      )}
-
-      {!loading && !testResults.error && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="font-medium text-green-800">Locations</h3>
-              <p className="text-2xl font-bold text-green-600">{testResults.locations.length}</p>
-              <p className="text-sm text-green-600">✅ Connected</p>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-medium text-blue-800">Orders</h3>
-              <p className="text-2xl font-bold text-blue-600">{testResults.orders.length}</p>
-              <p className="text-sm text-blue-600">✅ Connected</p>
-            </div>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="font-medium text-purple-800">Drivers</h3>
-              <p className="text-2xl font-bold text-purple-600">{testResults.drivers.length}</p>
-              <p className="text-sm text-purple-600">✅ Connected</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Data Display */}
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Orders ({orders.length})</h2>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {orders.map(order => (
+                <div key={order.id} className="p-2 bg-gray-50 rounded text-sm">
+                  #{order.order_number} - {order.customer_name} - {order.status}
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-medium mb-2">Sample Data:</h3>
-            <div className="text-sm space-y-2">
-              <div>
-                <strong>Locations:</strong> {testResults.locations.map(l => l.name).join(', ')}
-              </div>
-              <div>
-                <strong>Orders:</strong> {testResults.orders.length > 0 ? `#${testResults.orders[0].order_number}` : 'None'}
-              </div>
-              <div>
-                <strong>Drivers:</strong> {testResults.drivers.map(d => d.name).join(', ')}
-              </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Drivers ({drivers.length})</h2>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {drivers.map(driver => (
+                <div key={driver.id} className="p-2 bg-gray-50 rounded text-sm">
+                  {driver.name} - {driver.status}
+                </div>
+              ))}
             </div>
           </div>
 
-          <button
-            onClick={runTests}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            Run Test Again
-          </button>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Staff ({staff.length})</h2>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {staff.map(staffMember => (
+                <div key={staffMember.id} className="p-2 bg-gray-50 rounded text-sm">
+                  {staffMember.name} - {staffMember.role}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Locations ({locations.length})</h2>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {locations.map(location => (
+                <div key={location.id} className="p-2 bg-gray-50 rounded text-sm">
+                  {location.name}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Real-time Test */}
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Real-time Test</h2>
+            <button
+              onClick={testRealtime}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4"
+            >
+              Start Real-time Test (30s)
+            </button>
+            <div className="bg-gray-100 p-3 rounded max-h-80 overflow-y-auto">
+              <h3 className="font-semibold mb-2">Real-time Logs:</h3>
+              {realtimeLogs.length === 0 ? (
+                <p className="text-gray-500">No real-time events yet. Click the button above to start testing.</p>
+              ) : (
+                <div className="space-y-1">
+                  {realtimeLogs.map((log, index) => (
+                    <div key={index} className="text-xs font-mono bg-white p-1 rounded">
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Actions</h2>
+            <div className="space-y-2">
+              <button
+                onClick={loadAllData}
+                disabled={loading}
+                className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Refresh All Data'}
+              </button>
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

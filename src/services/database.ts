@@ -7,6 +7,36 @@ type Driver = Database['public']['Tables']['drivers']['Row']
 type Order = Database['public']['Tables']['orders']['Row']
 type OrderItem = Database['public']['Tables']['order_items']['Row']
 
+// Utility function to check if data has changed
+export const hasDataChanged = (oldData: any[], newData: any[]): boolean => {
+  if (oldData.length !== newData.length) return true;
+  
+  // Check if any items have changed by comparing IDs and key fields
+  for (let i = 0; i < oldData.length; i++) {
+    const oldItem = oldData[i];
+    const newItem = newData[i];
+    
+    if (oldItem.id !== newItem.id) return true;
+    
+    // For orders, check status and assigned_driver_id
+    if (oldItem.status !== newItem.status || oldItem.assigned_driver_id !== newItem.assigned_driver_id) {
+      return true;
+    }
+    
+    // For drivers, check status
+    if (oldItem.status !== newItem.status) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
+// Utility function to check if user is active on the page
+export const isUserActive = (): boolean => {
+  return !document.hidden && document.hasFocus();
+};
+
 // User Authentication and Management
 export const authService = {
   async login(username: string, password: string) {
@@ -94,6 +124,21 @@ export const authService = {
       .eq('id', id)
 
     if (error) throw error
+  },
+
+  async updateStaff(id: string, updates: { name?: string; phone?: string; location_id?: string; password?: string }) {
+    const { data, error } = await supabase
+      .from('staff')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        locations(name)
+      `)
+      .single()
+
+    if (error) throw error
+    return data
   }
 }
 
@@ -173,6 +218,21 @@ export const driverService = {
     return data
   },
 
+  async update(id: string, updates: { name?: string; phone?: string; location_id?: string; password?: string }) {
+    const { data, error } = await supabase
+      .from('drivers')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        locations(name)
+      `)
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
   async delete(id: string) {
     const { error } = await supabase
       .from('drivers')
@@ -197,7 +257,12 @@ export const orderService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data
+    
+    // Transform the data to map order_items to items
+    return data?.map(order => ({
+      ...order,
+      items: order.order_items || []
+    })) || []
   },
 
   async getByLocation(locationId: string) {
@@ -213,7 +278,16 @@ export const orderService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data
+    
+    // Transform the data to map order_items to items
+    const transformedData = data?.map(order => ({
+      ...order,
+      items: order.order_items || []
+    })) || []
+    
+
+    
+    return transformedData
   },
 
   async getByDriver(driverId: string) {
@@ -228,7 +302,12 @@ export const orderService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data
+    
+    // Transform the data to map order_items to items
+    return data?.map(order => ({
+      ...order,
+      items: order.order_items || []
+    })) || []
   },
 
   async getByStatus(status: 'pranuar' | 'konfirmuar' | 'ne_delivery' | 'perfunduar') {
@@ -244,7 +323,12 @@ export const orderService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data
+    
+    // Transform the data to map order_items to items
+    return data?.map(order => ({
+      ...order,
+      items: order.order_items || []
+    })) || []
   },
 
   async create(order: Omit<Order, 'id' | 'order_number' | 'created_at'>, items: Omit<OrderItem, 'id' | 'order_id'>[]) {
@@ -316,39 +400,51 @@ export const orderService = {
 // Real-time subscriptions
 export const realtimeService = {
   subscribeToOrders(callback: (payload: any) => void) {
-    return supabase
-      .channel('orders')
+    const channel = supabase
+      .channel('orders-updates')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' }, 
-        callback
+        (payload) => {
+          callback(payload);
+        }
       )
-      .subscribe()
+      .subscribe();
+    
+    return channel;
   },
 
   subscribeToDrivers(callback: (payload: any) => void) {
-    return supabase
-      .channel('drivers')
+    const channel = supabase
+      .channel('drivers-updates')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'drivers' }, 
-        callback
+        (payload) => {
+          callback(payload);
+        }
       )
-      .subscribe()
+      .subscribe();
+    
+    return channel;
   },
 
   subscribeToStaff(callback: (payload: any) => void) {
-    return supabase
-      .channel('staff')
+    const channel = supabase
+      .channel('staff-updates')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'staff' }, 
-        callback
+        (payload) => {
+          callback(payload);
+        }
       )
-      .subscribe()
+      .subscribe();
+    
+    return channel;
   },
 
   // Enhanced subscription for location-specific updates
   subscribeToLocationUpdates(locationId: string, callback: (payload: any) => void) {
-    return supabase
-      .channel(`location-${locationId}`)
+    const channel = supabase
+      .channel(`location-${locationId}-updates`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -356,7 +452,9 @@ export const realtimeService = {
           table: 'orders',
           filter: `location_id=eq.${locationId}`
         }, 
-        callback
+        (payload) => {
+          callback(payload);
+        }
       )
       .on('postgres_changes', 
         { 
@@ -365,15 +463,19 @@ export const realtimeService = {
           table: 'drivers',
           filter: `location_id=eq.${locationId}`
         }, 
-        callback
+        (payload) => {
+          callback(payload);
+        }
       )
-      .subscribe()
+      .subscribe();
+    
+    return channel;
   },
 
   // Subscription for driver-specific updates
   subscribeToDriverUpdates(driverId: string, callback: (payload: any) => void) {
-    return supabase
-      .channel(`driver-${driverId}`)
+    const channel = supabase
+      .channel(`driver-${driverId}-updates`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -381,8 +483,39 @@ export const realtimeService = {
           table: 'orders',
           filter: `assigned_driver_id=eq.${driverId}`
         }, 
-        callback
+        (payload) => {
+          callback(payload);
+        }
       )
-      .subscribe()
+      .subscribe();
+    
+    return channel;
+  },
+
+  // Comprehensive subscription for all order and driver changes
+  subscribeToAllUpdates(callback: (payload: any) => void) {
+    const channel = supabase
+      .channel('all-updates-comprehensive')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'drivers' }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'staff' }, 
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+    
+    return channel;
   }
 } 

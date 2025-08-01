@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Clock, X } from 'lucide-react';
+import { MapPin, Clock, X, AlertCircle, Info, CheckCircle } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
 import { orderService, locationService } from '../services/database';
 
@@ -23,6 +23,77 @@ interface CheckoutPageProps {
   formatPrice: (price: number) => string;
 }
 
+interface AlertProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
+const AlertPopup: React.FC<AlertProps> = ({ isOpen, onClose, title, message, type }) => {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="w-6 h-6 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="w-6 h-6 text-red-500" />;
+      case 'warning':
+        return <AlertCircle className="w-6 h-6 text-yellow-500" />;
+      case 'info':
+        return <Info className="w-6 h-6 text-blue-500" />;
+    }
+  };
+
+  const getBgColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'error':
+        return 'bg-red-50 border-red-200';
+      case 'warning':
+        return 'bg-yellow-50 border-yellow-200';
+      case 'info':
+        return 'bg-blue-50 border-blue-200';
+    }
+  };
+
+  const getButtonColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-500 hover:bg-green-600';
+      case 'error':
+        return 'bg-red-500 hover:bg-red-600';
+      case 'warning':
+        return 'bg-yellow-500 hover:bg-yellow-600';
+      case 'info':
+        return 'bg-blue-500 hover:bg-blue-600';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className={`${getBgColor()} border rounded-lg p-6 max-w-md w-full mx-4`}>
+        <div className="flex items-center mb-4">
+          {getIcon()}
+          <h3 className="ml-3 text-lg font-semibold text-gray-900">{title}</h3>
+        </div>
+        <p className="text-gray-700 mb-6">{message}</p>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className={`${getButtonColor()} text-white px-4 py-2 rounded-md transition-colors`}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CheckoutPage: React.FC<CheckoutPageProps> = ({ 
   onBack, 
   onOrderComplete, 
@@ -44,6 +115,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
+  const [alert, setAlert] = useState<AlertProps>({
+    isOpen: false,
+    onClose: () => setAlert({ ...alert, isOpen: false }),
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   // Load locations on component mount
   React.useEffect(() => {
@@ -81,7 +159,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
         name: item.name,
         quantity: item.quantity,
         price: item.price,
-        order_id: '' // This will be set by the database service
+        order_id: '', // This will be set by the database service
+        created_at: new Date().toISOString()
       }));
 
       const newOrder = await orderService.create(orderData, orderItems);
@@ -94,7 +173,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
       });
     } catch (error) {
       console.error('Error creating order:', error);
-      alert('Gabim në krijimin e porosisë. Provoni përsëri.');
+      setAlert({
+        isOpen: true,
+        onClose: () => setAlert({ ...alert, isOpen: false }),
+        title: 'Gabim',
+        message: 'Gabim në krijimin e porosisë. Provoni përsëri.',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -290,6 +375,13 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
           </div>
         </div>
       </div>
+      <AlertPopup
+        isOpen={alert.isOpen}
+        onClose={alert.onClose}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   );
 };

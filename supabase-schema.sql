@@ -19,9 +19,21 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS drivers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
   status TEXT CHECK (status IN ('i_lire', 'ne_delivery')) DEFAULT 'i_lire',
+  location_id UUID REFERENCES locations(id) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS staff (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
   location_id UUID REFERENCES locations(id) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -55,49 +67,30 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_assigned_driver_id ON orders(assigned_driver_id);
 CREATE INDEX IF NOT EXISTS idx_drivers_location_id ON drivers(location_id);
 CREATE INDEX IF NOT EXISTS idx_drivers_status ON drivers(status);
+CREATE INDEX IF NOT EXISTS idx_staff_location_id ON staff(location_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
-
--- Insert sample data
-INSERT INTO locations (name, address, phone, manager) VALUES
-  ('Pepperoni Pizza - Arbëri', 'Rr. Arbëri, Prishtinë', '049500600', 'Blerjan Gashi'),
-  ('Pepperoni Pizza - Qendra', 'Rr. Nëna Terezë, Prishtinë', '044123456', 'Ardian Krasniqi'),
-  ('Pepperoni Pizza - Ulpianë', 'Rr. Ilir Konushevci, Prishtinë', '049789012', 'Elda Berisha');
-
-INSERT INTO users (username, password, role, location_id) VALUES
-  ('admin', 'admin', 'admin', NULL),
-  ('staff', 'staff', 'staff', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Arbëri')),
-  ('driver', 'driver', 'driver', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Arbëri'));
-
-INSERT INTO drivers (name, phone, status, location_id) VALUES
-  ('Ardian Krasniqi', '044123456', 'i_lire', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Qendra')),
-  ('Blerim Berisha', '049789012', 'i_lire', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Ulpianë')),
-  ('Elda Gashi', '049500600', 'i_lire', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Arbëri'));
-
--- Insert sample orders
-INSERT INTO orders (order_number, customer_name, customer_phone, address, location_id, total, status, estimated_delivery) VALUES
-  (601, 'Blerjan Gashi', '049500600', 'Bajram Kelmendi Nr.20', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Arbëri'), 8.50, 'perfunduar', NOW() + INTERVAL '45 minutes'),
-  (602, 'Ardian Krasniqi', '044123456', 'Rr. Nëna Terezë 15', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Qendra'), 6.80, 'perfunduar', NOW() + INTERVAL '40 minutes'),
-  (603, 'Elda Berisha', '049789012', 'Rr. Ilir Konushevci 8', (SELECT id FROM locations WHERE name = 'Pepperoni Pizza - Ulpianë'), 5.00, 'perfunduar', NOW() + INTERVAL '35 minutes');
-
--- Insert sample order items
-INSERT INTO order_items (order_id, name, quantity, price) VALUES
-  ((SELECT id FROM orders WHERE order_number = 601), 'Pizza Margherita', 1, 3.50),
-  ((SELECT id FROM orders WHERE order_number = 601), 'Hamburger Classic', 2, 2.50),
-  ((SELECT id FROM orders WHERE order_number = 602), 'Pizza Pepperoni', 1, 4.00),
-  ((SELECT id FROM orders WHERE order_number = 602), 'Samun Special', 1, 2.80),
-  ((SELECT id FROM orders WHERE order_number = 603), 'Sandwich Mix', 2, 2.50);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (for idempotent execution)
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON locations;
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON users;
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON drivers;
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON staff;
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON orders;
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON order_items;
 
 -- Create RLS policies (basic ones - you can customize based on your needs)
 CREATE POLICY "Allow all operations for authenticated users" ON locations FOR ALL USING (true);
 CREATE POLICY "Allow all operations for authenticated users" ON users FOR ALL USING (true);
 CREATE POLICY "Allow all operations for authenticated users" ON drivers FOR ALL USING (true);
+CREATE POLICY "Allow all operations for authenticated users" ON staff FOR ALL USING (true);
 CREATE POLICY "Allow all operations for authenticated users" ON orders FOR ALL USING (true);
 CREATE POLICY "Allow all operations for authenticated users" ON order_items FOR ALL USING (true);
 

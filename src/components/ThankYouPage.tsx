@@ -1,5 +1,5 @@
-import React from 'react';
-import { Clock, MapPin, User, Building } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, MapPin, User, Building, AlertCircle, Info, CheckCircle } from 'lucide-react';
 
 interface CartItem {
   id: string;
@@ -15,11 +15,94 @@ interface ThankYouPageProps {
   onNewOrder: () => void;
 }
 
-const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, cartItems, onNewOrder }) => {
+interface AlertProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
 
+const AlertPopup: React.FC<AlertProps> = ({ isOpen, onClose, title, message, type }) => {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="w-6 h-6 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="w-6 h-6 text-red-500" />;
+      case 'warning':
+        return <AlertCircle className="w-6 h-6 text-yellow-500" />;
+      case 'info':
+        return <Info className="w-6 h-6 text-blue-500" />;
+    }
+  };
+
+  const getBgColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'error':
+        return 'bg-red-50 border-red-200';
+      case 'warning':
+        return 'bg-yellow-50 border-yellow-200';
+      case 'info':
+        return 'bg-blue-50 border-blue-200';
+    }
+  };
+
+  const getButtonColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-500 hover:bg-green-600';
+      case 'error':
+        return 'bg-red-500 hover:bg-red-600';
+      case 'warning':
+        return 'bg-yellow-500 hover:bg-yellow-600';
+      case 'info':
+        return 'bg-blue-500 hover:bg-blue-600';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className={`${getBgColor()} border rounded-lg p-6 max-w-md w-full mx-4`}>
+        <div className="flex items-center mb-4">
+          {getIcon()}
+          <h3 className="ml-3 text-lg font-semibold text-gray-900">{title}</h3>
+        </div>
+        <p className="text-gray-700 mb-6">{message}</p>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className={`${getButtonColor()} text-white px-4 py-2 rounded-md transition-colors`}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, cartItems, onNewOrder }) => {
+  const [alert, setAlert] = useState<AlertProps>({
+    isOpen: false,
+    onClose: () => setAlert({ ...alert, isOpen: false }),
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   const downloadInvoice = () => {
-    alert('Fatura po shkarkohet...');
+    setAlert({
+      isOpen: true,
+      onClose: () => setAlert({ ...alert, isOpen: false }),
+      title: 'Fatura po shkarkohet...',
+      message: 'Fatura po përgatitet për shkarkim.',
+      type: 'info'
+    });
   };
 
   return (
@@ -93,9 +176,24 @@ const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, cartItems, onNew
             ))}
           </div>
 
-          {/* Total */}
-          <div className="bg-orange-500 text-white text-center py-3 rounded-lg font-bold text-lg">
-            TOTAL: {orderData.total}
+          {/* Totals */}
+          <div className="border-t border-gray-300 pt-4 space-y-2 mb-4">
+            <div className="flex justify-between text-sm">
+              <span>Nëntotali:</span>
+              <span>{(cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)).toFixed(2)}€</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Tarifa e dorëzimit:</span>
+              <span>1.00€</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
+              <span>TOTALI:</span>
+              <span>{(cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) + 1.00).toFixed(2)}€</span>
+            </div>
+          </div>
+
+          <div className="text-center text-sm text-gray-600 mt-2">
+            VETËM KESH
           </div>
 
           <div className="text-center text-sm text-gray-600 mt-2">
@@ -123,6 +221,13 @@ const ThankYouPage: React.FC<ThankYouPageProps> = ({ orderData, cartItems, onNew
           </button>
         </div>
       </div>
+      <AlertPopup
+        isOpen={alert.isOpen}
+        onClose={alert.onClose}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   );
 };

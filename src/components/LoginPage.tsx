@@ -119,26 +119,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
           </form>
 
-          <div className="mt-6 grid grid-cols-1 gap-3">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Admin Panel</h3>
-              <p className="text-xs text-gray-600 mb-1">Përdoruesi: <span className="font-mono">admin</span></p>
-              <p className="text-xs text-gray-600">Fjalëkalimi: <span className="font-mono">admin</span></p>
-              <p className="text-xs text-gray-500 mt-1">Menaxhim i plotë i sistemit</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Staff Panel</h3>
-              <p className="text-xs text-gray-600 mb-1">Përdoruesi: <span className="font-mono">staff</span></p>
-              <p className="text-xs text-gray-600">Fjalëkalimi: <span className="font-mono">staff</span></p>
-              <p className="text-xs text-gray-500 mt-1">Menaxhim i porosive për pikën</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Driver Panel</h3>
-              <p className="text-xs text-gray-600 mb-1">Përdoruesi: <span className="font-mono">driver</span></p>
-              <p className="text-xs text-gray-600">Fjalëkalimi: <span className="font-mono">driver</span></p>
-              <p className="text-xs text-gray-500 mt-1">Menaxhim i dorëzimeve</p>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
