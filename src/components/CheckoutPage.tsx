@@ -109,7 +109,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 min-h-screen">
       {/* Header */}
       <nav className="px-4 py-3 shadow-lg" style={{ backgroundColor: '#37B34A' }}>
         <div className="flex items-center justify-between">
@@ -127,7 +127,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
         </div>
       </nav>
 
-      <div className="flex flex-col lg:flex-row max-w-7xl mx-auto p-6 gap-8">
+      <div className="flex flex-col lg:flex-row p-6 gap-8">
         {/* Checkout Form */}
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Të dhënat e porosisë</h1>

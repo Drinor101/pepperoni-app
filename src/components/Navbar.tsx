@@ -8,10 +8,9 @@ interface NavbarProps {
   cartTotal: string;
   totalItems: number;
   onLogin: () => void;
-  onCartClick: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems, onLogin, onCartClick }) => {
+const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems, onLogin }) => {
   return (
     <nav className="px-4 py-3 shadow-lg" style={{ backgroundColor: '#37B34A' }}>
       <div className="w-full flex items-center justify-between">
@@ -47,11 +46,8 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems, onLogin, onCartC
             <span className="font-medium">Admin/Driver</span>
           </button>
 
-          {/* Price/Cart Section */}
-          <button
-            onClick={onCartClick}
-            className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm hover:bg-opacity-25 transition-all cursor-pointer"
-          >
+          {/* Price/Cart Section - Informational Only */}
+          <div className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm">
             <img 
               src={cartIcon}
               alt="Shopping Cart" 
@@ -63,7 +59,7 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems, onLogin, onCartC
                 {totalItems}
               </span>
             )}
-          </button>
+          </div>
         </div>
       </div>
     </nav>

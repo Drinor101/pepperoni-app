@@ -13,6 +13,7 @@ export interface Database {
         Row: {
           id: string
           username: string
+          password: string
           role: 'admin' | 'staff' | 'driver'
           location_id?: string
           created_at: string
@@ -20,6 +21,7 @@ export interface Database {
         Insert: {
           id?: string
           username: string
+          password: string
           role: 'admin' | 'staff' | 'driver'
           location_id?: string
           created_at?: string
@@ -27,6 +29,7 @@ export interface Database {
         Update: {
           id?: string
           username?: string
+          password?: string
           role?: 'admin' | 'staff' | 'driver'
           location_id?: string
           created_at?: string
@@ -61,6 +64,8 @@ export interface Database {
       drivers: {
         Row: {
           id: string
+          username: string
+          password: string
           name: string
           phone: string
           status: 'i_lire' | 'ne_delivery'
@@ -69,6 +74,8 @@ export interface Database {
         }
         Insert: {
           id?: string
+          username: string
+          password: string
           name: string
           phone: string
           status?: 'i_lire' | 'ne_delivery'
@@ -77,9 +84,40 @@ export interface Database {
         }
         Update: {
           id?: string
+          username?: string
+          password?: string
           name?: string
           phone?: string
           status?: 'i_lire' | 'ne_delivery'
+          location_id?: string
+          created_at?: string
+        }
+      }
+      staff: {
+        Row: {
+          id: string
+          username: string
+          password: string
+          name: string
+          phone: string
+          location_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          username: string
+          password: string
+          name: string
+          phone: string
+          location_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          username?: string
+          password?: string
+          name?: string
+          phone?: string
           location_id?: string
           created_at?: string
         }

@@ -13,7 +13,7 @@ import MobileLayout from './components/MobileLayout';
 import DatabaseTest from './components/DatabaseTest';
 import { authService } from './services/database';
 
-type AppState = 'home' | 'cart' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'test';
+type AppState = 'home' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'test';
 
 interface User {
   username: string;
@@ -182,67 +182,83 @@ function App() {
 
 
 
-      {['home', 'cart', 'checkout', 'thankyou'].includes(currentPage) && (
+      {currentPage === 'home' && (
         <>
-                     <Navbar
-             cartTotal={`${(totalPrice + 2.00).toFixed(2)}€`}
-             totalItems={totalItems}
-             onLogin={handleGoToLogin}
-             onCartClick={() => setCurrentPage('cart')}
-           />
+          <Navbar
+            cartTotal={`${(totalPrice + 2.00).toFixed(2)}€`}
+            totalItems={totalItems}
+            onLogin={handleGoToLogin}
+          />
 
-          {currentPage === 'home' && (
-            <HeroSection
-              addToCart={addToCart}
-            />
-          )}
+          <div className="flex min-h-screen bg-gray-50">
+            {/* Main Content */}
+            <div className="flex-1">
+              <HeroSection
+                addToCart={addToCart}
+              />
+            </div>
 
-                     {currentPage === 'cart' && (
-             <div className="flex justify-center items-start min-h-screen bg-gray-50 pt-20">
-                            <Cart
-               cartItems={cartItems}
-               updateQuantity={updateQuantity}
-               removeFromCart={removeFromCart}
-               subtotal={totalPrice}
-               deliveryFee={2.00}
-               total={totalPrice + 2.00}
-               formatPrice={(price: number) => `${price.toFixed(2)}€`}
-               onCheckout={() => setCurrentPage('checkout')}
-               onBackToMenu={() => setCurrentPage('home')}
-             />
-             </div>
-           )}
+            {/* Fixed Cart Sidebar - Right Side (Smaller) */}
+            <div className="w-64 mr-4">
+              <Cart
+                cartItems={cartItems}
+                updateQuantity={updateQuantity}
+                removeFromCart={removeFromCart}
+                subtotal={totalPrice}
+                deliveryFee={2.00}
+                total={totalPrice + 2.00}
+                formatPrice={(price: number) => `${price.toFixed(2)}€`}
+                onCheckout={() => setCurrentPage('checkout')}
+                onBackToMenu={() => setCurrentPage('home')}
+                showBackButton={false}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
-          {currentPage === 'checkout' && (
-            <CheckoutPage
-              cartItems={cartItems}
-              subtotal={totalPrice}
-              deliveryFee={2.00}
-              total={totalPrice + 2.00}
-              formatPrice={(price: number) => `${price.toFixed(2)}€`}
-              updateQuantity={updateQuantity}
-              removeFromCart={removeFromCart}
-                             onOrderComplete={(orderData) => {
-                 console.log('Order completed:', orderData);
-                 // Store order data for ThankYouPage
-                 setOrderData(orderData);
-                 setCurrentPage('thankyou');
-               }}
-              onBack={() => setCurrentPage('cart')}
-            />
-          )}
+      {currentPage === 'checkout' && (
+        <>
+          <Navbar
+            cartTotal={`${(totalPrice + 2.00).toFixed(2)}€`}
+            totalItems={totalItems}
+            onLogin={handleGoToLogin}
+          />
+          <CheckoutPage
+            cartItems={cartItems}
+            subtotal={totalPrice}
+            deliveryFee={2.00}
+            total={totalPrice + 2.00}
+            formatPrice={(price: number) => `${price.toFixed(2)}€`}
+            updateQuantity={updateQuantity}
+            removeFromCart={removeFromCart}
+            onOrderComplete={(orderData) => {
+              console.log('Order completed:', orderData);
+              // Store order data for ThankYouPage
+              setOrderData(orderData);
+              setCurrentPage('thankyou');
+            }}
+            onBack={() => setCurrentPage('home')}
+          />
+        </>
+      )}
 
-                     {currentPage === 'thankyou' && orderData && (
-             <ThankYouPage
-               orderData={orderData}
-               cartItems={cartItems}
-               onNewOrder={() => {
-                 setOrderData(null);
-                 clearCart();
-                 setCurrentPage('home');
-               }}
-             />
-           )}
+      {currentPage === 'thankyou' && orderData && (
+        <>
+          <Navbar
+            cartTotal={`${(totalPrice + 2.00).toFixed(2)}€`}
+            totalItems={totalItems}
+            onLogin={handleGoToLogin}
+          />
+          <ThankYouPage
+            orderData={orderData}
+            cartItems={cartItems}
+            onNewOrder={() => {
+              setOrderData(null);
+              clearCart();
+              setCurrentPage('home');
+            }}
+          />
         </>
       )}
     </div>

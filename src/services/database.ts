@@ -192,7 +192,7 @@ export const orderService = {
         *,
         locations(name),
         drivers(name, phone),
-        order_items(*)
+        order_items(name, quantity, price)
       `)
       .order('created_at', { ascending: false })
 
@@ -207,7 +207,7 @@ export const orderService = {
         *,
         locations(name),
         drivers(name, phone),
-        order_items(*)
+        order_items(name, quantity, price)
       `)
       .eq('location_id', locationId)
       .order('created_at', { ascending: false })
@@ -222,8 +222,7 @@ export const orderService = {
       .select(`
         *,
         locations(name),
-        drivers(name, phone),
-        order_items(*)
+        order_items(name, quantity, price)
       `)
       .eq('assigned_driver_id', driverId)
       .order('created_at', { ascending: false })
@@ -232,14 +231,14 @@ export const orderService = {
     return data
   },
 
-  async getByStatus(status: Order['status']) {
+  async getByStatus(status: 'pranuar' | 'konfirmuar' | 'ne_delivery' | 'perfunduar') {
     const { data, error } = await supabase
       .from('orders')
       .select(`
         *,
         locations(name),
         drivers(name, phone),
-        order_items(*)
+        order_items(name, quantity, price)
       `)
       .eq('status', status)
       .order('created_at', { ascending: false })
@@ -248,8 +247,7 @@ export const orderService = {
     return data
   },
 
-  async create(order: Omit<Order, 'id' | 'created_at' | 'order_number'>, items: Omit<OrderItem, 'id' | 'created_at'>[]) {
-    // Start a transaction
+  async create(order: Omit<Order, 'id' | 'order_number' | 'created_at'>, items: Omit<OrderItem, 'id' | 'order_id'>[]) {
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert(order)
@@ -258,7 +256,6 @@ export const orderService = {
 
     if (orderError) throw orderError
 
-    // Insert order items
     const orderItems = items.map(item => ({
       ...item,
       order_id: orderData.id
@@ -273,7 +270,7 @@ export const orderService = {
     return orderData
   },
 
-  async updateStatus(id: string, status: Order['status']) {
+  async updateStatus(id: string, status: 'pranuar' | 'konfirmuar' | 'ne_delivery' | 'perfunduar') {
     const { data, error } = await supabase
       .from('orders')
       .update({ status })
@@ -285,14 +282,11 @@ export const orderService = {
     return data
   },
 
-  async assignDriver(orderId: string, driverId: string) {
+  async assignDriver(id: string, driverId: string) {
     const { data, error } = await supabase
       .from('orders')
-      .update({ 
-        assigned_driver_id: driverId,
-        status: 'konfirmuar'
-      })
-      .eq('id', orderId)
+      .update({ assigned_driver_id: driverId })
+      .eq('id', id)
       .select()
       .single()
 
@@ -300,20 +294,22 @@ export const orderService = {
     return data
   },
 
-  async getDeliveredOrders() {
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        locations(name),
-        drivers(name, phone),
-        order_items(*)
-      `)
-      .eq('status', 'perfunduar')
-      .order('created_at', { ascending: false })
+  async delete(id: string) {
+    // First delete order items
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', id)
 
-    if (error) throw error
-    return data
+    if (itemsError) throw itemsError
+
+    // Then delete the order
+    const { error: orderError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id)
+
+    if (orderError) throw orderError
   }
 }
 
@@ -334,6 +330,57 @@ export const realtimeService = {
       .channel('drivers')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'drivers' }, 
+        callback
+      )
+      .subscribe()
+  },
+
+  subscribeToStaff(callback: (payload: any) => void) {
+    return supabase
+      .channel('staff')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'staff' }, 
+        callback
+      )
+      .subscribe()
+  },
+
+  // Enhanced subscription for location-specific updates
+  subscribeToLocationUpdates(locationId: string, callback: (payload: any) => void) {
+    return supabase
+      .channel(`location-${locationId}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders',
+          filter: `location_id=eq.${locationId}`
+        }, 
+        callback
+      )
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'drivers',
+          filter: `location_id=eq.${locationId}`
+        }, 
+        callback
+      )
+      .subscribe()
+  },
+
+  // Subscription for driver-specific updates
+  subscribeToDriverUpdates(driverId: string, callback: (payload: any) => void) {
+    return supabase
+      .channel(`driver-${driverId}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders',
+          filter: `assigned_driver_id=eq.${driverId}`
+        }, 
         callback
       )
       .subscribe()

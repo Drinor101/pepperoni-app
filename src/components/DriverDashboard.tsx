@@ -54,6 +54,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
   const [deliveries, setDeliveries] = useState<DeliveryOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDelivered, setShowDelivered] = useState(false);
 
   // Load driver's orders from database
   useEffect(() => {
@@ -74,58 +75,66 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
 
     loadDriverOrders();
 
-    // Set up real-time subscription for driver's orders
+    // Set up enhanced real-time subscription for driver's orders
     if (user?.id) {
-      const ordersSubscription = realtimeService.subscribeToOrders((payload) => {
-        const relevantChange =
-          (payload.eventType === 'INSERT' && payload.new?.assigned_driver_id === user.id) ||
-          (payload.eventType === 'UPDATE' && payload.new?.assigned_driver_id === user.id) ||
-          (payload.eventType === 'DELETE' && payload.old?.assigned_driver_id === user.id);
-
-        if (relevantChange) {
-          if (user.id) {
-            orderService.getByDriver(user.id).then(setDeliveries);
-          }
-        }
+      const driverId = user.id;
+      const driverSubscription = realtimeService.subscribeToDriverUpdates(driverId, (payload) => {
+        console.log('Driver real-time update received:', payload);
+        
+        // Refresh driver's orders
+        orderService.getByDriver(driverId).then(setDeliveries);
       });
 
       return () => {
-        ordersSubscription.unsubscribe();
+        driverSubscription.unsubscribe();
       };
     }
   }, [user?.id]);
 
   const acceptOrder = async (deliveryId: string) => {
     try {
-      // Update order status in database
-      await orderService.updateStatus(deliveryId, 'ne_delivery');
-      
-      // Update local state
+      // Update local state immediately for better UX
       setDeliveries(prev => prev.map(delivery => 
         delivery.id === deliveryId ? { ...delivery, status: 'ne_delivery' } : delivery
       ));
+      
+      // Update database
+      await orderService.updateStatus(deliveryId, 'ne_delivery');
       
       alert('Porosia u pranua! Statusi u ndryshua në "Në delivery" dhe stafi do ta shohë në kanban view.');
     } catch (err) {
       console.error('Error accepting order:', err);
       alert('Gabim në pranimin e porosisë');
+      
+      // Reload data if update failed
+      if (user?.id) {
+        orderService.getByDriver(user.id).then(setDeliveries);
+      }
     }
   };
 
   const deliverOrder = async (deliveryId: string) => {
     try {
-      // Update order status in database
-      await orderService.updateStatus(deliveryId, 'perfunduar');
-      
-      // Update local state
+      // Update local state immediately for better UX
       setDeliveries(prev => prev.map(delivery => 
         delivery.id === deliveryId ? { ...delivery, status: 'perfunduar' } : delivery
       ));
+      
+      // Update database - both order status and driver status
+      await Promise.all([
+        orderService.updateStatus(deliveryId, 'perfunduar'),
+        driverService.updateStatus(user?.id || '', 'i_lire')
+      ]);
       
       alert('Porosia u dorëzua! Statusi u ndryshua në "Përfunduar" dhe stafi do ta shohë në kanban view.');
     } catch (err) {
       console.error('Error delivering order:', err);
       alert('Gabim në dorëzimin e porosisë');
+      
+      // Reload data if update failed
+      if (user?.id) {
+        orderService.getByDriver(user.id).then(setDeliveries);
+      }
     }
   };
 
@@ -158,6 +167,21 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
   };
 
+  // Filter deliveries based on showDelivered state
+  const filteredDeliveries = showDelivered 
+    ? deliveries 
+    : deliveries.filter(delivery => delivery.status !== 'perfunduar');
+
+  // Sort by oldest first (oldest orders first)
+  const sortedDeliveries = filteredDeliveries.sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  const pranuarCount = deliveries.filter(d => d.status === 'pranuar').length;
+  const konfirmuarCount = deliveries.filter(d => d.status === 'konfirmuar').length;
+  const neDeliveryCount = deliveries.filter(d => d.status === 'ne_delivery').length;
+  const perfunduarCount = deliveries.filter(d => d.status === 'perfunduar').length;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -185,15 +209,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
     );
   }
 
-  // Filter and sort orders by oldest first
-  const filteredDeliveries = deliveries
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-  const pranuarCount = deliveries.filter(d => d.status === 'pranuar').length;
-  const konfirmuarCount = deliveries.filter(d => d.status === 'konfirmuar').length;
-  const neDeliveryCount = deliveries.filter(d => d.status === 'ne_delivery').length;
-  const perfunduarCount = deliveries.filter(d => d.status === 'perfunduar').length;
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -209,6 +224,17 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
               <h1 className="text-xl font-semibold text-gray-900">Driver Panel</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setShowDelivered(!showDelivered)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  showDelivered 
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>{showDelivered ? 'Fshi porositë e dorëzuara' : 'Shfaq porositë e dorëzuara'}</span>
+              </button>
               <div className="flex items-center space-x-2">
                 <Bell className="w-5 h-5 text-gray-400" />
                 <span className="text-sm text-gray-600">Mirë se vini, {user?.username}!</span>
@@ -321,7 +347,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
           <div className="p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Porositë për ju</h2>
 
-            {filteredDeliveries.length === 0 ? (
+            {sortedDeliveries.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Nuk ka porosi</h3>
@@ -329,7 +355,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredDeliveries.map((delivery) => (
+                {sortedDeliveries.map((delivery) => (
                   <div key={delivery.id} className="bg-gray-50 rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>

@@ -12,14 +12,15 @@ import {
   Bell,
   Building,
   BarChart3,
-  Grid3X3,
-  List,
-  Printer,
-  Eye,
-  Trash2,
+  Plus,
   Users,
-  Check,
-  X
+  UserPlus,
+  X,
+  Trash2,
+  List,
+  Grid3X3,
+  Printer,
+  Check
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
 import { orderService, driverService, realtimeService } from '../services/database';
@@ -103,37 +104,22 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
 
     loadData();
 
-    // Set up real-time subscriptions
+    // Set up enhanced real-time subscriptions
     if (user?.location_id) {
-      const ordersSubscription = realtimeService.subscribeToOrders((payload) => {
-        const relevantChange =
-          (payload.eventType === 'INSERT' && payload.new?.location_id === user.location_id) ||
-          (payload.eventType === 'UPDATE' && payload.new?.location_id === user.location_id) ||
-          (payload.eventType === 'DELETE' && payload.old?.location_id === user.location_id);
-
-        if (relevantChange) {
-          if (user.location_id) {
-            orderService.getByLocation(user.location_id).then(setOrders);
-          }
-        }
-      });
-
-      const driversSubscription = realtimeService.subscribeToDrivers((payload) => {
-        const relevantChange =
-          (payload.eventType === 'INSERT' && payload.new?.location_id === user.location_id) ||
-          (payload.eventType === 'UPDATE' && payload.new?.location_id === user.location_id) ||
-          (payload.eventType === 'DELETE' && payload.old?.location_id === user.location_id);
-
-        if (relevantChange) {
-          if (user.location_id) {
-            driverService.getByLocation(user.location_id).then(setDrivers);
-          }
+      const locationId = user.location_id;
+      const locationSubscription = realtimeService.subscribeToLocationUpdates(locationId, (payload) => {
+        console.log('Real-time update received:', payload);
+        
+        // Refresh data based on the type of change
+        if (payload.table === 'orders') {
+          orderService.getByLocation(locationId).then(setOrders);
+        } else if (payload.table === 'drivers') {
+          driverService.getByLocation(locationId).then(setDrivers);
         }
       });
 
       return () => {
-        ordersSubscription.unsubscribe();
-        driversSubscription.unsubscribe();
+        locationSubscription.unsubscribe();
       };
     }
   }, [user?.location_id]);
@@ -147,32 +133,62 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
     if (!selectedOrder) return;
 
     try {
-      // Update order in database - assign driver and change status to 'konfirmuar'
-      await orderService.assignDriver(selectedOrder.id, driverId);
-      await orderService.updateStatus(selectedOrder.id, 'konfirmuar');
+      // Update local state immediately for better UX
+      const driver = drivers.find(d => d.id === driverId);
       
-      // Update local state
       setOrders(prev => prev.map(order => 
         order.id === selectedOrder.id ? { 
           ...order, 
           status: 'konfirmuar',
           assigned_driver_id: driverId,
-          drivers: drivers.find(d => d.id === driverId)
+          drivers: driver
         } : order
       ));
       
-      // Update driver status
       setDrivers(prev => prev.map(driver => 
         driver.id === driverId ? { ...driver, status: 'ne_delivery' } : driver
       ));
       
-      const driver = drivers.find(d => d.id === driverId);
+      // Update database - both order and driver status
+      await Promise.all([
+        orderService.assignDriver(selectedOrder.id, driverId),
+        orderService.updateStatus(selectedOrder.id, 'konfirmuar'),
+        driverService.updateStatus(driverId, 'ne_delivery')
+      ]);
+      
       alert(`Porosia #${selectedOrder.order_number} u caktua tek shoferi ${driver?.name} dhe statusi u ndryshua në 'Konfirmuar'!`);
       setShowDriverModal(false);
       setSelectedOrder(null);
     } catch (err) {
       console.error('Error assigning driver:', err);
       alert('Gabim në caktimin e shoferit');
+      
+      // Reload data if update failed
+      if (user?.location_id) {
+        orderService.getByLocation(user.location_id).then(setOrders);
+        driverService.getByLocation(user.location_id).then(setDrivers);
+      }
+    }
+  };
+
+  const deleteOrder = async (orderId: string, orderNumber: number) => {
+    if (confirm(`A jeni të sigurt që dëshironi ta fshini porosinë #${orderNumber}?`)) {
+      try {
+        // Update local state immediately for better UX
+        setOrders(prev => prev.filter(order => order.id !== orderId));
+        
+        // Delete from database
+        await orderService.delete(orderId);
+        alert(`Porosia #${orderNumber} u fshi me sukses!`);
+      } catch (err) {
+        console.error('Error deleting order:', err);
+        alert('Gabim në fshirjen e porosisë');
+        
+        // Reload data if deletion failed
+        if (user?.location_id) {
+          orderService.getByLocation(user.location_id).then(setOrders);
+        }
+      }
     }
   };
 
@@ -482,6 +498,13 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
                                     <Printer className="w-4 h-4" />
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => deleteOrder(order.id, order.order_number)}
+                                  className="text-red-600 hover:text-red-900"
+                                  title="Fshij porosinë"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             </td>
                           </tr>

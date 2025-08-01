@@ -74,21 +74,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
 
     loadData();
 
-    // Set up real-time subscriptions
-    const ordersSubscription = realtimeService.subscribeToOrders(() => {
-      // Reload all data when orders change
-      loadData();
+    // Set up real-time subscriptions for all tables
+    const ordersSubscription = realtimeService.subscribeToOrders((payload) => {
+      console.log('Orders changed:', payload);
+      // Reload orders data
+      orderService.getAll().then(setOrders);
     });
 
-    const driversSubscription = realtimeService.subscribeToDrivers(() => {
-      // Reload all data when drivers change
-      loadData();
+    const driversSubscription = realtimeService.subscribeToDrivers((payload) => {
+      console.log('Drivers changed:', payload);
+      // Reload drivers data
+      driverService.getAll().then(setDrivers);
+    });
+
+    // Add staff subscription
+    const staffSubscription = realtimeService.subscribeToStaff((payload) => {
+      console.log('Staff changed:', payload);
+      // Reload staff data
+      authService.getAllStaff().then(setStaff);
     });
 
     // Cleanup subscriptions on unmount
     return () => {
       ordersSubscription.unsubscribe();
       driversSubscription.unsubscribe();
+      staffSubscription.unsubscribe();
     };
   }, []);
 
@@ -101,9 +111,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         phone: newStaff.phone,
         location_id: newStaff.location_id
       });
+      
+      // Update local state immediately for better UX
       setStaff(prev => [...prev, staffData]);
       setShowAddStaffModal(false);
       setNewStaff({ username: '', password: '', name: '', phone: '', location_id: '' });
+      
+      alert('Stafi u shtua me sukses!');
     } catch (err) {
       console.error('Error adding staff:', err);
       alert('Gabim në shtimin e stafit');
@@ -113,9 +127,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleAddDriver = async () => {
     try {
       const driverData = await driverService.create(newDriver);
+      
+      // Update local state immediately for better UX
       setDrivers(prev => [...prev, driverData]);
       setShowAddDriverModal(false);
       setNewDriver({ username: '', password: '', name: '', phone: '', location_id: '' });
+      
+      alert('Shoferi u shtua me sukses!');
     } catch (err) {
       console.error('Error adding driver:', err);
       alert('Gabim në shtimin e shoferit');
@@ -125,11 +143,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleDeleteStaff = async (staffId: string) => {
     if (confirm('A jeni të sigurt që dëshironi ta fshini këtë staf?')) {
       try {
-        await authService.deleteStaff(staffId);
+        // Update local state immediately for better UX
         setStaff(prev => prev.filter(staff => staff.id !== staffId));
+        
+        await authService.deleteStaff(staffId);
+        alert('Stafi u fshi me sukses!');
       } catch (err) {
         console.error('Error deleting staff:', err);
         alert('Gabim në fshirjen e stafit');
+        // Reload staff data if deletion failed
+        authService.getAllStaff().then(setStaff);
       }
     }
   };
@@ -137,11 +160,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleDeleteDriver = async (driverId: string) => {
     if (confirm('A jeni të sigurt që dëshironi ta fshini këtë shofer?')) {
       try {
-        await driverService.delete(driverId);
+        // Update local state immediately for better UX
         setDrivers(prev => prev.filter(driver => driver.id !== driverId));
+        
+        await driverService.delete(driverId);
+        alert('Shoferi u fshi me sukses!');
       } catch (err) {
         console.error('Error deleting driver:', err);
         alert('Gabim në fshirjen e shoferit');
+        // Reload drivers data if deletion failed
+        driverService.getAll().then(setDrivers);
       }
     }
   };
