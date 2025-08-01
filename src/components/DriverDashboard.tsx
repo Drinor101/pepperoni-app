@@ -207,8 +207,11 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         delivery.id === deliveryId ? { ...delivery, status: 'ne_delivery' } : delivery
       ));
       
-      // Update database
-      await orderService.updateStatus(deliveryId, 'ne_delivery');
+      // Update database - both order status and driver status
+      await Promise.all([
+        orderService.updateStatus(deliveryId, 'ne_delivery'),
+        driverService.updateStatus(user?.id || '', 'ne_delivery')
+      ]);
       
       setAlert({
         isOpen: true,
