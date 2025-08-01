@@ -37,6 +37,37 @@ export const isUserActive = (): boolean => {
   return !document.hidden && document.hasFocus();
 };
 
+// Fallback refresh mechanism for when real-time fails
+export const createFallbackRefresh = (
+  refreshFunction: () => Promise<void>,
+  intervalMs: number = 3000
+) => {
+  let intervalId: NodeJS.Timeout | null = null;
+  
+  const start = () => {
+    if (intervalId) return; // Already running
+    
+    intervalId = setInterval(async () => {
+      if (isUserActive()) {
+        try {
+          await refreshFunction();
+        } catch (error) {
+          console.error('Fallback refresh error:', error);
+        }
+      }
+    }, intervalMs);
+  };
+  
+  const stop = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
+  
+  return { start, stop };
+};
+
 // User Authentication and Management
 export const authService = {
   async login(username: string, password: string) {
@@ -401,42 +432,51 @@ export const orderService = {
 export const realtimeService = {
   subscribeToOrders(callback: (payload: any) => void) {
     const channel = supabase
-      .channel('orders-updates')
+      .channel(`orders-updates-${Date.now()}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' }, 
         (payload) => {
+          console.log('Orders real-time event:', payload);
           callback(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Orders subscription status:', status);
+      });
     
     return channel;
   },
 
   subscribeToDrivers(callback: (payload: any) => void) {
     const channel = supabase
-      .channel('drivers-updates')
+      .channel(`drivers-updates-${Date.now()}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'drivers' }, 
         (payload) => {
+          console.log('Drivers real-time event:', payload);
           callback(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Drivers subscription status:', status);
+      });
     
     return channel;
   },
 
   subscribeToStaff(callback: (payload: any) => void) {
     const channel = supabase
-      .channel('staff-updates')
+      .channel(`staff-updates-${Date.now()}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'staff' }, 
         (payload) => {
+          console.log('Staff real-time event:', payload);
           callback(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Staff subscription status:', status);
+      });
     
     return channel;
   },
@@ -444,7 +484,7 @@ export const realtimeService = {
   // Enhanced subscription for location-specific updates
   subscribeToLocationUpdates(locationId: string, callback: (payload: any) => void) {
     const channel = supabase
-      .channel(`location-${locationId}-updates`)
+      .channel(`location-${locationId}-updates-${Date.now()}`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -453,6 +493,7 @@ export const realtimeService = {
           filter: `location_id=eq.${locationId}`
         }, 
         (payload) => {
+          console.log('Location orders real-time event:', payload);
           callback(payload);
         }
       )
@@ -464,10 +505,13 @@ export const realtimeService = {
           filter: `location_id=eq.${locationId}`
         }, 
         (payload) => {
+          console.log('Location drivers real-time event:', payload);
           callback(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Location subscription status:', status);
+      });
     
     return channel;
   },
@@ -475,7 +519,7 @@ export const realtimeService = {
   // Subscription for driver-specific updates
   subscribeToDriverUpdates(driverId: string, callback: (payload: any) => void) {
     const channel = supabase
-      .channel(`driver-${driverId}-updates`)
+      .channel(`driver-${driverId}-updates-${Date.now()}`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -484,10 +528,13 @@ export const realtimeService = {
           filter: `assigned_driver_id=eq.${driverId}`
         }, 
         (payload) => {
+          console.log('Driver orders real-time event:', payload);
           callback(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Driver subscription status:', status);
+      });
     
     return channel;
   },
@@ -495,26 +542,31 @@ export const realtimeService = {
   // Comprehensive subscription for all order and driver changes
   subscribeToAllUpdates(callback: (payload: any) => void) {
     const channel = supabase
-      .channel('all-updates-comprehensive')
+      .channel(`all-updates-${Date.now()}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' }, 
         (payload) => {
+          console.log('All updates - Orders event:', payload);
           callback(payload);
         }
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'drivers' }, 
         (payload) => {
+          console.log('All updates - Drivers event:', payload);
           callback(payload);
         }
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'staff' }, 
         (payload) => {
+          console.log('All updates - Staff event:', payload);
           callback(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('All updates subscription status:', status);
+      });
     
     return channel;
   }

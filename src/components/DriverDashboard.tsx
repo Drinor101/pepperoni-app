@@ -21,7 +21,7 @@ import {
   List
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService } from '../services/database';
+import { orderService, driverService, realtimeService, createFallbackRefresh } from '../services/database';
 
 interface User {
   username: string;
@@ -163,9 +163,10 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
     if (user?.id) {
       const driverId = user.id;
   
-      
       // Subscribe to driver-specific updates
       const driverSubscription = realtimeService.subscribeToDriverUpdates(driverId, (payload) => {
+        console.log('Driver Dashboard received driver update:', payload);
+        
         // Refresh driver's orders
         orderService.getByDriver(driverId).then(setDeliveries).catch(err => {
           console.error('Error refreshing driver orders:', err);
@@ -174,6 +175,8 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
 
       // Also subscribe to all updates to catch any order changes
       const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
+        console.log('Driver Dashboard received all updates:', payload);
+        
         // Refresh driver's orders for any order changes
         if (payload.table === 'orders') {
           orderService.getByDriver(driverId).then(setDeliveries).catch(err => {
@@ -182,6 +185,10 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         }
       });
 
+      // Set up fallback refresh mechanism (3-second intervals)
+      const fallbackRefresh = createFallbackRefresh(loadDriverOrders, 3000);
+      fallbackRefresh.start();
+
       return () => {
         if (driverSubscription) {
           driverSubscription.unsubscribe();
@@ -189,6 +196,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         if (allUpdatesSubscription) {
           allUpdatesSubscription.unsubscribe();
         }
+        fallbackRefresh.stop();
       };
     }
   }, [user?.id]);

@@ -16,16 +16,20 @@ import {
   Users,
   UserPlus,
   X,
+  AlertCircle,
+  Info,
+  Filter,
+  TrendingUp,
+  Calendar,
+  FileText,
+  Printer,
   Trash2,
   List,
   Grid3X3,
-  Printer,
-  Check,
-  AlertCircle,
-  Info
+  Check
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService } from '../services/database';
+import { orderService, driverService, realtimeService, createFallbackRefresh } from '../services/database';
 
 interface User {
   username: string;
@@ -316,9 +320,10 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
     if (user?.location_id) {
       const locationId = user.location_id;
   
-      
       // Subscribe to location-specific updates
       const locationSubscription = realtimeService.subscribeToLocationUpdates(locationId, (payload) => {
+        console.log('Staff Dashboard received location update:', payload);
+        
         // Refresh data based on the type of change
         if (payload.table === 'orders') {
           orderService.getByLocation(locationId).then(setOrders).catch(err => {
@@ -333,6 +338,8 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
 
       // Also subscribe to all updates to catch cross-location changes
       const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
+        console.log('Staff Dashboard received all updates:', payload);
+        
         // Refresh data for any order or driver changes
         if (payload.table === 'orders') {
           orderService.getByLocation(locationId).then(setOrders).catch(err => {
@@ -345,6 +352,10 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
         }
       });
 
+      // Set up fallback refresh mechanism (3-second intervals)
+      const fallbackRefresh = createFallbackRefresh(loadData, 3000);
+      fallbackRefresh.start();
+
       return () => {
         if (locationSubscription) {
           locationSubscription.unsubscribe();
@@ -352,6 +363,7 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
         if (allUpdatesSubscription) {
           allUpdatesSubscription.unsubscribe();
         }
+        fallbackRefresh.stop();
       };
     }
   }, [user?.location_id]);

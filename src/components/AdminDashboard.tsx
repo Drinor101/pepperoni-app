@@ -24,7 +24,7 @@ import {
   FileText
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { authService, locationService, orderService, driverService, realtimeService } from '../services/database';
+import { authService, locationService, orderService, driverService, realtimeService, createFallbackRefresh } from '../services/database';
 
 interface Driver {
   id: string;
@@ -217,8 +217,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     loadData();
 
     // Set up comprehensive real-time subscription for all updates
-
     const allUpdatesSubscription = realtimeService.subscribeToAllUpdates((payload) => {
+      console.log('Admin Dashboard received real-time update:', payload);
+      
       // Refresh data based on the type of change
       if (payload.table === 'orders') {
         orderService.getAll().then(setOrders).catch(err => {
@@ -235,11 +236,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       }
     });
 
-    // Cleanup subscription on unmount
+    // Set up fallback refresh mechanism (3-second intervals)
+    const fallbackRefresh = createFallbackRefresh(loadData, 3000);
+    fallbackRefresh.start();
+
+    // Cleanup subscription and fallback on unmount
     return () => {
       if (allUpdatesSubscription) {
         allUpdatesSubscription.unsubscribe();
       }
+      fallbackRefresh.stop();
     };
   }, []);
 
