@@ -21,7 +21,7 @@ import {
   List
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService, createFallbackRefresh } from '../services/database';
+import { orderService, driverService, realtimeService } from '../services/database';
 
 interface User {
   username: string;
@@ -185,10 +185,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         }
       });
 
-      // Set up fallback refresh mechanism (15-second intervals - less aggressive)
-      const fallbackRefresh = createFallbackRefresh(loadDriverOrders, 15000);
-      fallbackRefresh.start();
-
       return () => {
         if (driverSubscription) {
           driverSubscription.unsubscribe();
@@ -196,7 +192,6 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
         if (allUpdatesSubscription) {
           allUpdatesSubscription.unsubscribe();
         }
-        fallbackRefresh.stop();
       };
     }
   }, [user?.id]);

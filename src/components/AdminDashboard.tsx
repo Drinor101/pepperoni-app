@@ -24,7 +24,7 @@ import {
   FileText
 } from 'lucide-react';
 import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { authService, locationService, orderService, driverService, realtimeService, createFallbackRefresh } from '../services/database';
+import { authService, locationService, orderService, driverService, realtimeService } from '../services/database';
 
 interface Driver {
   id: string;
@@ -236,17 +236,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       }
     });
 
-    // Set up fallback refresh mechanism (15-second intervals - less aggressive)
-    const fallbackRefresh = createFallbackRefresh(loadData, 15000);
-    fallbackRefresh.start();
-
-    // Cleanup subscription and fallback on unmount
-    return () => {
-      if (allUpdatesSubscription) {
-        allUpdatesSubscription.unsubscribe();
-      }
-      fallbackRefresh.stop();
-    };
+      // Cleanup subscription on unmount
+  return () => {
+    if (allUpdatesSubscription) {
+      allUpdatesSubscription.unsubscribe();
+    }
+  };
   }, []);
 
     const handleAddStaff = async () => {
