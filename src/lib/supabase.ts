@@ -1,7 +1,27 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Try multiple ways to get environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+// For debugging - log what we're getting (without exposing the key)
+console.log('Environment check:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  urlLength: supabaseUrl?.length || 0,
+  keyLength: supabaseAnonKey?.length || 0
+})
+
+// Validate environment variables
+if (!supabaseUrl) {
+  console.error('VITE_SUPABASE_URL is not defined in environment variables')
+  throw new Error('VITE_SUPABASE_URL is required. Please check your environment variables.')
+}
+
+if (!supabaseAnonKey) {
+  console.error('VITE_SUPABASE_ANON_KEY is not defined in environment variables')
+  throw new Error('VITE_SUPABASE_ANON_KEY is required. Please check your environment variables.')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
