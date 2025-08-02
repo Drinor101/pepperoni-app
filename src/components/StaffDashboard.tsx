@@ -28,61 +28,15 @@ import {
   Grid3X3,
   Check
 } from 'lucide-react';
-import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services/database';
+import { pepperoniLogo } from '../assets';
+import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services';
+import type { User } from '../types';
 
-interface User {
-  username: string;
-  role: 'admin' | 'staff' | 'driver';
-  location?: string;
-  location_id?: string;
-}
-
-interface Order {
-  id: string;
-  order_number: number;
-  customer_name: string;
-  customer_phone: string;
-  address: string;
-  location_id: string;
-  locations?: { name: string };
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-  }>;
-  total: number;
-  status: 'pranuar' | 'konfirmuar' | 'ne_delivery' | 'perfunduar';
-  created_at: string;
-  estimated_delivery: string;
-  assigned_driver_id?: string;
-  drivers?: {
-    id: string;
-    name: string;
-    phone: string;
-  };
-}
-
-interface Driver {
-  id: string;
-  name: string;
-  phone: string;
-  status: 'i_lire' | 'ne_delivery';
-  location_id: string;
-  locations?: { name: string };
-}
+import type { Order, Driver, AlertProps } from '../types';
 
 interface StaffDashboardProps {
   user: User | null;
   onLogout: () => void;
-}
-
-interface AlertProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
 }
 
 interface ConfirmDialogProps {

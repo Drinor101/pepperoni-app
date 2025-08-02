@@ -1,8 +1,7 @@
 import React from 'react';
 import { Gamepad2, ShoppingCart } from 'lucide-react';
-import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import gamingIcon from '../assets/gaming 1.svg';
-import cartIcon from '../assets/Frame.svg';
+import { pepperoniLogo } from '../assets';
+import { gamingIcon, frameIcon } from '../assets';
 
 interface NavbarProps {
   cartTotal: string;
@@ -39,7 +38,7 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems }) => {
           {/* Price/Cart Section - Informational Only */}
           <div className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm">
             <img 
-              src={cartIcon}
+              src={frameIcon}
               alt="Shopping Cart" 
               className="w-5 h-5"
             />

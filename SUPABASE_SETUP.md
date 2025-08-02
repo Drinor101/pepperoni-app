@@ -1,99 +1,110 @@
-# 🚀 Supabase Backend Integration Setup
+# Supabase Setup Guide
 
-## **📋 Overview**
-This guide will help you set up Supabase as the backend for the Pepperoni Pizza delivery system.
+Complete setup guide for the Pepperoni Pizza Management System database.
 
-## **🎯 What we're implementing:**
-- ✅ Real database with PostgreSQL
-- ✅ User authentication and authorization
-- ✅ Real-time order updates
-- ✅ Driver assignment and tracking
-- ✅ Order status management
-- ✅ Location-based filtering
+## 🚀 Quick Setup
 
-## **🛠️ Setup Steps:**
-
-### **1. Create Supabase Project**
+### 1. Create Supabase Project
 1. Go to [supabase.com](https://supabase.com)
-2. Sign up/Login and create a new project
-3. Note down your project URL and anon key
+2. Create a new project
+3. Note your project URL and anon key
 
-### **2. Install Dependencies**
-```bash
-npm install @supabase/supabase-js
-```
+### 2. Database Schema
+Run the complete schema from `supabase-schema.sql` in your Supabase SQL Editor.
 
-### **3. Environment Variables**
-Create a `.env.local` file in your project root:
+### 3. Enable Real-time
+1. Go to Database → Replication
+2. Enable real-time for all tables:
+   - ✅ `orders`
+   - ✅ `drivers` 
+   - ✅ `staff`
+   - ✅ `locations`
+   - ✅ `users`
+
+### 4. Environment Variables
+Add to your `.env` file:
 ```env
-VITE_SUPABASE_URL=https://upomlventbesrgpgwlxo.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwb21sdmVudGJlc3JncGd3bHhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwMTQ3NjIsImV4cCI6MjA2OTU5MDc2Mn0.v9VfJO9OTl6s7_q3Z8VLKQEzNh54hrbBDTuqboTKthQ
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
 ```
 
-### **4. Database Setup**
-1. Go to your Supabase dashboard
-2. Navigate to SQL Editor
-3. Copy and paste the contents of `supabase-schema.sql`
-4. Run the SQL script
+## 📊 Database Schema Overview
 
-### **5. Test the Integration**
-1. Start your development server: `npm run dev`
-2. Test login with:
-   - **Admin**: username: `admin`, password: `admin`
-   - **Staff**: username: `staff`, password: `staff`
-   - **Driver**: username: `driver`, password: `driver`
+### Tables
+- **users**: Admin users
+- **locations**: Pizza locations
+- **staff**: Staff members per location
+- **drivers**: Delivery drivers
+- **orders**: Customer orders
+- **order_items**: Items in each order
 
-## **🗄️ Database Schema:**
+### Key Features
+- **Row Level Security (RLS)**: Enabled on all tables
+- **Real-time subscriptions**: Live updates across dashboards
+- **Automatic order numbering**: Trigger-based order numbers
+- **Foreign key relationships**: Proper data integrity
 
-### **Tables:**
-- **`locations`** - Restaurant locations
-- **`users`** - Admin, staff, and driver accounts
-- **`drivers`** - Driver information and status
-- **`orders`** - Order details and status
-- **`order_items`** - Individual items in each order
+## 🔒 Security Configuration
 
-### **Key Features:**
-- **Auto-incrementing order numbers** (starting from 601)
-- **Real-time subscriptions** for live updates
-- **Row Level Security** for data protection
-- **Foreign key relationships** for data integrity
+### RLS Policies
+All tables have RLS enabled with appropriate policies:
+- Location-based access for staff
+- Role-based permissions
+- Secure data access patterns
 
-## **🔄 Real-time Features:**
-- **Live order updates** - Staff sees new orders instantly
-- **Driver status changes** - Real-time availability updates
-- **Order status tracking** - From "pranuar" to "perfunduar"
+### Authentication
+- Username/password authentication
+- Role-based access control
+- Secure session management
 
-## **🔐 Authentication:**
-Currently using simple username/password matching. For production:
-1. Enable Supabase Auth
-2. Implement proper password hashing
-3. Add JWT token management
+## 🔧 Advanced Configuration
 
-## **📱 API Endpoints:**
-All database operations are handled through the service functions in `src/services/database.ts`:
-- `authService` - User authentication
-- `locationService` - Location management
-- `driverService` - Driver operations
-- `orderService` - Order management
-- `realtimeService` - Real-time subscriptions
+### Performance Optimization
+- Indexed foreign keys
+- Optimized queries
+- Efficient real-time subscriptions
 
-## **🚀 Next Steps:**
-1. **Set up Supabase project** and run the schema
-2. **Add environment variables**
-3. **Test the integration**
-4. **Deploy to production**
+### Monitoring
+- Database logs enabled
+- Performance metrics
+- Error tracking
 
-## **⚠️ Important Notes:**
-- Keep your environment variables secure
-- Never commit `.env.local` to version control
-- Test thoroughly before deploying to production
-- Consider implementing proper authentication for production use
+## 🚨 Troubleshooting
 
-## **🆘 Troubleshooting:**
-- **Connection issues**: Check your Supabase URL and key
-- **Data not loading**: Verify the schema was applied correctly
-- **Real-time not working**: Check your Supabase project settings
+### Real-time Not Working
+1. Check if replication is enabled
+2. Verify environment variables
+3. Check browser console for errors
+4. Ensure proper table permissions
+
+### Connection Issues
+1. Verify Supabase URL and key
+2. Check network connectivity
+3. Review RLS policies
+4. Check browser console
+
+## 📈 Production Checklist
+
+- [ ] Real-time enabled for all tables
+- [ ] RLS policies configured
+- [ ] Environment variables set
+- [ ] Database backups enabled
+- [ ] Monitoring configured
+- [ ] Performance optimized
+
+## 🔄 Maintenance
+
+### Regular Tasks
+- Monitor database performance
+- Review access logs
+- Update RLS policies as needed
+- Backup data regularly
+
+### Updates
+- Keep Supabase client updated
+- Monitor for security updates
+- Review and update policies
 
 ---
 
-**Ready to integrate? Let's make this delivery system fully functional! 🍕🚗** 
+**For support, refer to the main README.md or create an issue in the repository.** 

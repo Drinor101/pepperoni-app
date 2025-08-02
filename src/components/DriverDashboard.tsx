@@ -20,16 +20,9 @@ import {
   Home,
   List
 } from 'lucide-react';
-import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services/database';
-
-interface User {
-  username: string;
-  role: 'admin' | 'staff' | 'driver';
-  location?: string;
-  location_id?: string;
-  id?: string;
-}
+import { pepperoniLogo } from '../assets';
+import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services';
+import type { User } from '../types';
 
 interface DeliveryOrder {
   id: string;

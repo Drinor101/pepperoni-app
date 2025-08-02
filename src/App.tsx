@@ -1,45 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import HeroSection from './components/HeroSection';
-import Cart from './components/Cart';
-import CheckoutPage from './components/CheckoutPage';
-import ThankYouPage from './components/ThankYouPage';
-import LoginPage from './components/LoginPage';
-import AdminDashboard from './components/AdminDashboard';
-import DriverDashboard from './components/DriverDashboard';
-import StaffDashboard from './components/StaffDashboard';
-
-import MobileLayout from './components/MobileLayout';
-import DatabaseTest from './components/DatabaseTest';
-import { authService, realtimeService } from './services/database';
+import {
+  Navbar,
+  HeroSection,
+  Cart,
+  CheckoutPage,
+  ThankYouPage,
+  LoginPage,
+  AdminDashboard,
+  DriverDashboard,
+  StaffDashboard,
+  MobileLayout
+} from './components';
+import { authService, realtimeService } from './services';
 import { AlertCircle, Info, CheckCircle } from 'lucide-react';
-
-type AppState = 'home' | 'checkout' | 'thankyou' | 'login' | 'admin' | 'staff' | 'driver' | 'test';
-
-interface User {
-  username: string;
-  role: 'admin' | 'staff' | 'driver';
-  location?: string;
-  location_id?: string;
-  id?: string;
-}
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
-
-interface AlertProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-}
+import type { AppState, User, CartItem, AlertProps } from './types';
 
 const AlertPopup: React.FC<AlertProps> = ({ isOpen, onClose, title, message, type }) => {
   if (!isOpen) return null;
@@ -334,25 +309,7 @@ function App() {
           } 
         />
 
-        {/* Test Route */}
-        <Route 
-          path="/test" 
-          element={
-            <div className="min-h-screen bg-gray-50 p-8">
-              <div className="max-w-4xl mx-auto">
-                <DatabaseTest />
-                <div className="mt-6 text-center">
-                  <button
-                    onClick={() => navigate('/')}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                  >
-                    Back to Home
-                  </button>
-                </div>
-              </div>
-            </div>
-          } 
-        />
+
 
         {/* Home Route - Default */}
         <Route 

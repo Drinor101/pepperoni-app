@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
-import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
+import { pepperoniLogo } from '../assets';
 
 interface CartItem {
   id: string;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin, Clock, X, AlertCircle, Info, CheckCircle } from 'lucide-react';
-import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
-import { orderService, locationService } from '../services/database';
+import { pepperoniLogo } from '../assets';
+import { orderService, locationService } from '../services';
 
 interface CartItem {
   id: string;

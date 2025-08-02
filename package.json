@@ -1,13 +1,19 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "pepperoni-pizza-management",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A modern, real-time pizza delivery management system",
+  "author": "Pepperoni Team",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --fix",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.53.0",
