@@ -577,9 +577,51 @@ class RealtimeStateManager {
   }
 }
 
-// Optimized Real-time Service
+// Test real-time connection
+export const testRealtimeConnection = async () => {
+  console.log('Testing real-time connection...');
+  
+  return new Promise((resolve) => {
+    const channel = supabase
+      .channel('test-connection')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders'
+        }, 
+        (payload) => {
+          console.log('✅ Real-time is working! Received payload:', payload);
+          channel.unsubscribe();
+          resolve(true);
+        }
+      )
+      .subscribe((status) => {
+        console.log('Test subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to test channel');
+          // Wait 3 seconds to see if we get any events
+          setTimeout(() => {
+            console.log('⚠️ No real-time events received. Replication might not be enabled.');
+            channel.unsubscribe();
+            resolve(false);
+          }, 3000);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.log('❌ Failed to subscribe to test channel');
+          resolve(false);
+        }
+      });
+  });
+};
+
+// Enhanced real-time service with fallback polling
 export const realtimeService = {
   manager: RealtimeStateManager.getInstance(),
+
+  // Test if real-time is working
+  async testConnection() {
+    return await testRealtimeConnection();
+  },
 
   // Subscribe to orders with optional location filter
   subscribeToOrders(callback: (payload: any) => void, locationId?: string) {
@@ -639,7 +681,7 @@ export const realtimeService = {
   }
 }
 
-// Custom Hook for Optimized State Management
+// Custom Hook for Optimized State Management with Fallback Polling
 
 export const useOptimizedRealtimeData = <T>(
   fetchFunction: () => Promise<T[]>,
@@ -653,7 +695,9 @@ export const useOptimizedRealtimeData = <T>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<'testing' | 'working' | 'fallback'>('testing');
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const lastDataRef = useRef<T[]>([]);
 
   // Fetch data function
@@ -685,6 +729,20 @@ export const useOptimizedRealtimeData = <T>(
     });
   }, []);
 
+  // Setup fallback polling
+  const setupPolling = useCallback(() => {
+    console.log(`Setting up fallback polling for ${subscriptionConfig.table}`);
+    setRealtimeStatus('fallback');
+    
+    // Poll every 3 seconds for faster updates
+    pollingRef.current = setInterval(() => {
+      if (isUserActive()) {
+        console.log(`Polling ${subscriptionConfig.table} for updates...`);
+        fetchData();
+      }
+    }, 3000);
+  }, [subscriptionConfig.table, fetchData]);
+
   // Setup real-time subscription
   useEffect(() => {
     console.log(`Setting up real-time subscription for ${subscriptionConfig.table} with filters:`, subscriptionConfig.filters);
@@ -692,27 +750,48 @@ export const useOptimizedRealtimeData = <T>(
     // Initial data fetch
     fetchData();
 
-    // Setup real-time subscription
-    const unsubscribe = realtimeService.manager.subscribeToTable(
-      subscriptionConfig.table,
-      (payload) => {
-        console.log(`${subscriptionConfig.table} real-time update received:`, payload);
-        console.log(`Event type: ${payload.eventType}, Table: ${payload.table}`);
+    // Test real-time connection first
+    const testAndSetup = async () => {
+      try {
+        const isRealtimeWorking = await realtimeService.testConnection();
         
-        // Handle different event types immediately
-        if (payload.eventType === 'INSERT' && subscriptionConfig.onNewData) {
-          console.log('Calling onNewData callback with:', payload.new);
-          subscriptionConfig.onNewData(payload.new);
-        }
-        
-        // Immediately fetch fresh data for all events
-        console.log('Fetching fresh data after real-time event...');
-        fetchData();
-      },
-      subscriptionConfig.filters
-    );
+        if (isRealtimeWorking) {
+          console.log(`✅ Real-time is working for ${subscriptionConfig.table}`);
+          setRealtimeStatus('working');
+          
+          // Setup real-time subscription
+          const unsubscribe = realtimeService.manager.subscribeToTable(
+            subscriptionConfig.table,
+            (payload) => {
+              console.log(`${subscriptionConfig.table} real-time update received:`, payload);
+              console.log(`Event type: ${payload.eventType}, Table: ${payload.table}`);
+              
+              // Handle different event types immediately
+              if (payload.eventType === 'INSERT' && subscriptionConfig.onNewData) {
+                console.log('Calling onNewData callback with:', payload.new);
+                subscriptionConfig.onNewData(payload.new);
+              }
+              
+              // Immediately fetch fresh data for all events
+              console.log('Fetching fresh data after real-time event...');
+              fetchData();
+            },
+            subscriptionConfig.filters
+          );
 
-    unsubscribeRef.current = unsubscribe;
+          unsubscribeRef.current = unsubscribe;
+        } else {
+          console.log(`⚠️ Real-time not working for ${subscriptionConfig.table}, using fallback polling`);
+          console.log('💡 To enable real-time: Go to Supabase Dashboard → Table Editor → Select table → Replication → Enable INSERT/UPDATE/DELETE');
+          setupPolling();
+        }
+      } catch (error) {
+        console.error(`Error testing real-time for ${subscriptionConfig.table}:`, error);
+        setupPolling();
+      }
+    };
+
+    testAndSetup();
 
     // Cleanup function
     return () => {
@@ -721,6 +800,10 @@ export const useOptimizedRealtimeData = <T>(
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     };
   }, [...dependencies, subscriptionConfig.table, JSON.stringify(subscriptionConfig.filters)]);
 
@@ -728,6 +811,7 @@ export const useOptimizedRealtimeData = <T>(
     data,
     loading,
     error,
+    realtimeStatus,
     refetch: fetchData,
     optimisticUpdate
   };
