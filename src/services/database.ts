@@ -1,9 +1,6 @@
 import { supabase, type Database } from '../lib'
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-type User = Database['public']['Tables']['users']['Row']
-type Location = Database['public']['Tables']['locations']['Row']
-type Driver = Database['public']['Tables']['drivers']['Row']
 type Order = Database['public']['Tables']['orders']['Row']
 type OrderItem = Database['public']['Tables']['order_items']['Row']
 
@@ -40,11 +37,10 @@ export const isUserActive = (): boolean => {
 // Fallback refresh mechanism for when real-time fails
 export const createFallbackRefresh = (
   refreshFunction: () => Promise<void>,
-  intervalMs: number = 10000, // Increased to 10 seconds to be less aggressive
-  onNewData?: (data: any) => void
+  intervalMs: number = 10000 // Increased to 10 seconds to be less aggressive
 ) => {
   let intervalId: NodeJS.Timeout | null = null;
-  let lastDataHash: string = '';
+
   
   const start = () => {
     if (intervalId) return; // Already running
@@ -74,7 +70,7 @@ export const createFallbackRefresh = (
 export const authService = {
   async login(username: string, password: string) {
     // Check in users table (admin)
-    let { data, error } = await supabase
+    let { data } = await supabase
       .from('users')
       .select('*')
       .eq('username', username)
@@ -86,7 +82,7 @@ export const authService = {
     }
 
     // Check in staff table
-    const { data: staffData, error: staffError } = await supabase
+    const { data: staffData } = await supabase
       .from('staff')
       .select(`
         *,
@@ -101,7 +97,7 @@ export const authService = {
     }
 
     // Check in drivers table
-    const { data: driverData, error: driverError } = await supabase
+    const { data: driverData } = await supabase
       .from('drivers')
       .select(`
         *,
@@ -453,7 +449,7 @@ class RealtimeStateManager {
 
   private setupConnectionMonitoring() {
     // Monitor connection status - using channel events instead of realtime events
-    const monitorChannel = supabase.channel('connection-monitor')
+    supabase.channel('connection-monitor')
       .on('system', { event: 'connected' }, () => {
         this.isConnected = true;
         this.reconnectAttempts = 0;
@@ -574,7 +570,7 @@ export const testRealtimeConnection = async () => {
           schema: 'public', 
           table: 'orders'
         }, 
-        (payload) => {
+        () => {
           channel.unsubscribe();
           resolve(true);
         }

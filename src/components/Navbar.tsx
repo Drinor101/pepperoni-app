@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gamepad2, ShoppingCart } from 'lucide-react';
+
 import { pepperoniLogo } from '../assets';
 import { gamingIcon, frameIcon } from '../assets';
 

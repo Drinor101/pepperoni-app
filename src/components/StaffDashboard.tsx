@@ -5,23 +5,13 @@ import {
   Clock, 
   CheckCircle, 
   Truck, 
-  MapPin, 
   Phone, 
-  User as UserIcon, 
-  DollarSign,
   Bell,
   Building,
-  BarChart3,
-  Plus,
   Users,
-  UserPlus,
   X,
   AlertCircle,
   Info,
-  Filter,
-  TrendingUp,
-  Calendar,
-  FileText,
   Printer,
   Trash2,
   List,
@@ -29,7 +19,7 @@ import {
   Check
 } from 'lucide-react';
 import { pepperoniLogo } from '../assets';
-import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services';
+import { orderService, driverService, useOptimizedRealtimeData } from '../services';
 import type { User } from '../types';
 
 import type { Order, Driver, AlertProps } from '../types';
@@ -223,13 +213,13 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
   
   // Alert states
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [showErrorAlert, setShowErrorAlert] = useState(false);
+
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
   // New order notification state
-  const [showNewOrderNotification, setShowNewOrderNotification] = useState(false);
+
   const [newOrderDetails, setNewOrderDetails] = useState<any>(null);
 
   // Confirmation dialog state
@@ -283,7 +273,7 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
     [user?.location_id]
   );
 
-  const { data: driversData, loading: driversLoading, error: driversError, optimisticUpdate: optimisticUpdateDrivers } = useOptimizedRealtimeData(
+  const { data: driversData, loading: driversLoading, error: driversError } = useOptimizedRealtimeData(
     () => user?.location_id ? driverService.getByLocation(user.location_id) : Promise.resolve([]),
     { 
       table: 'drivers',
@@ -410,10 +400,10 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
     }
   };
 
-  const printInvoice = (order: Order) => {
-    const subtotal = order.total - 1.00;
-    const invoiceContent = `
-      PEPPERONI PIZZA - FATURA
+      const printInvoice = (order: Order) => {
+      const subtotal = order.total - 1.00;
+      const invoiceContent = `
+        PEPPERONI PIZZA - FATURA
       =========================
       Numri i porosisë: #${order.order_number}
       Data: ${new Date(order.created_at).toLocaleDateString()}
@@ -438,7 +428,29 @@ const StaffDashboard: React.FC<StaffDashboardProps> = ({ user, onLogout }) => {
       VETËM KESH
     `;
 
-    showAlert('Fatura po printohet...', 'Fatura po përgatitet për printim. Ju lutem prisni...', 'info');
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Fatura #${order.order_number}</title>
+            <style>
+              body { font-family: monospace; font-size: 12px; line-height: 1.4; }
+              pre { white-space: pre-wrap; }
+            </style>
+          </head>
+          <body>
+            <pre>${invoiceContent}</pre>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+      printWindow.close();
+    }
+
+    showAlert('Fatura u printua!', 'Fatura u dërgua në printer.', 'success');
   };
 
   if (loading) {

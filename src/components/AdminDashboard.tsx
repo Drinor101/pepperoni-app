@@ -6,22 +6,13 @@ import {
   CheckCircle, 
   Truck, 
   MapPin, 
-  Phone, 
-  User, 
-  DollarSign,
-  Bell,
-  Building,
-  BarChart3,
   Plus,
   Users,
   UserPlus,
-  X,
   AlertCircle,
   Info,
   Filter,
-  TrendingUp,
-  Calendar,
-  FileText
+  TrendingUp
 } from 'lucide-react';
 import { pepperoniLogo } from '../assets';
 import { authService, locationService, orderService, driverService, useOptimizedRealtimeData } from '../services';
@@ -192,7 +183,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const [confirmOnConfirm, setConfirmOnConfirm] = useState<(() => void) | null>(null);
 
   // Use optimized real-time data hooks
-  const { data: ordersData, loading: ordersLoading, error: ordersError, optimisticUpdate: optimisticUpdateOrders } = useOptimizedRealtimeData(
+  const { data: ordersData, loading: ordersLoading, error: ordersError } = useOptimizedRealtimeData(
     orderService.getAll,
     { table: 'orders' }
   );
@@ -501,7 +492,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const totalOrders = reportsData.length;
   const completedOrders = reportsData.filter(o => o.status === 'perfunduar').length;
   const pendingOrders = reportsData.filter(o => o.status === 'pranuar' || o.status === 'konfirmuar').length;
-  const inDeliveryOrders = reportsData.filter(o => o.status === 'ne_delivery').length;
+
 
   if (loading) {
     return (
@@ -1442,25 +1433,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         </div>
       )}
 
-      {/* Success Alert */}
-      {showSuccessAlert && (
+      {/* Alert */}
+      {(showSuccessAlert || showErrorAlert) && (
         <AlertPopup
-          isOpen={showSuccessAlert}
-          onClose={() => setShowSuccessAlert(false)}
+          isOpen={showSuccessAlert || showErrorAlert}
+          onClose={() => {
+            setShowSuccessAlert(false);
+            setShowErrorAlert(false);
+          }}
           title={alertTitle}
           message={alertMessage}
-          type="success"
-        />
-      )}
-
-      {/* Error Alert */}
-      {showErrorAlert && (
-        <AlertPopup
-          isOpen={showErrorAlert}
-          onClose={() => setShowErrorAlert(false)}
-          title={alertTitle}
-          message={alertMessage}
-          type="error"
+          type={alertType}
         />
       )}
 

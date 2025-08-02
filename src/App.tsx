@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import {
   Navbar,
   HeroSection,
@@ -93,7 +93,7 @@ function App() {
   });
   
   const navigate = useNavigate();
-  const location = useLocation();
+
 
   // Check for existing session on app load
   useEffect(() => {

@@ -2,26 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { 
   LogOut, 
   Package, 
-  Clock, 
   CheckCircle, 
   Truck, 
   MapPin, 
   Phone, 
-  User as UserIcon, 
-  DollarSign,
-  Bell,
   Navigation,
-  Star,
   Check,
-  X,
   AlertCircle,
-  Info,
-  Menu,
-  Home,
-  List
+  Info
 } from 'lucide-react';
 import { pepperoniLogo } from '../assets';
-import { orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services';
+import { orderService, driverService, useOptimizedRealtimeData } from '../services';
 import type { User } from '../types';
 
 interface DeliveryOrder {
@@ -267,8 +258,7 @@ const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout }) => 
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  const pranuarCount = deliveries.filter(d => d.status === 'pranuar').length;
-  const konfirmuarCount = deliveries.filter(d => d.status === 'konfirmuar').length;
+
   const neDeliveryCount = deliveries.filter(d => d.status === 'ne_delivery').length;
   const perfunduarCount = deliveries.filter(d => d.status === 'perfunduar').length;
 

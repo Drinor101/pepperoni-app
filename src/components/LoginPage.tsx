@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, User, Lock } from 'lucide-react';
 import { pepperoniLogo } from '../assets';
-import { authService } from '../services';
+
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => void;

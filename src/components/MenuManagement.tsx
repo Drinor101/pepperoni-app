@@ -3,7 +3,6 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  Image, 
   Tag,
   DollarSign,
   Package

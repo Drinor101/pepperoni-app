@@ -25,8 +25,7 @@ interface CartProps {
 const Cart: React.FC<CartProps> = ({
   cartItems,
   updateQuantity,
-  removeFromCart,
-  subtotal,
+
   deliveryFee,
   total,
   formatPrice,

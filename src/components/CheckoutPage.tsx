@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Clock, X, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { Clock, AlertCircle, Info, CheckCircle } from 'lucide-react';
 import { pepperoniLogo } from '../assets';
 import { orderService, locationService } from '../services';
 
@@ -98,8 +98,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onBack, 
   onOrderComplete, 
   cartItems, 
-  updateQuantity, 
-  removeFromCart, 
+   
   subtotal, 
   deliveryFee, 
   total, 
