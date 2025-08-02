@@ -4,13 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
-// For debugging - log what we're getting (without exposing the key)
-console.log('Environment check:', {
-  hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  urlLength: supabaseUrl?.length || 0,
-  keyLength: supabaseAnonKey?.length || 0
-})
+// Check if we're in development mode
+const isDevelopment = import.meta.env.DEV || process.env.NODE_ENV === 'development'
 
 // Validate environment variables
 if (!supabaseUrl) {
@@ -33,6 +28,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'pepperoni-pizza-app'
+    }
   }
 })
 

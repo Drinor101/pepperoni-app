@@ -24,7 +24,7 @@ import {
   FileText
 } from 'lucide-react';
 import { pepperoniLogo } from '../assets';
-import { authService, locationService, orderService, driverService, realtimeService, useOptimizedRealtimeData } from '../services';
+import { authService, locationService, orderService, driverService, useOptimizedRealtimeData } from '../services';
 
 interface Driver {
   id: string;
@@ -519,12 +519,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
-          >
-            Provoni përsëri
-          </button>
+          <p className="mt-4 text-gray-600">Ju lutem prisni që të ngarkohen të dhënat...</p>
         </div>
       </div>
     );

@@ -7,7 +7,7 @@ import {
   Truck, 
   MapPin, 
   Phone, 
-  User, 
+  User as UserIcon, 
   DollarSign,
   Bell,
   Building,
