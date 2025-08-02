@@ -456,12 +456,10 @@ class RealtimeStateManager {
     // Monitor connection status - using channel events instead of realtime events
     const monitorChannel = supabase.channel('connection-monitor')
       .on('system', { event: 'connected' }, () => {
-        console.log('Realtime connected');
         this.isConnected = true;
         this.reconnectAttempts = 0;
       })
       .on('system', { event: 'disconnected' }, () => {
-        console.log('Realtime disconnected');
         this.isConnected = false;
         this.attemptReconnect();
       })
@@ -470,12 +468,10 @@ class RealtimeStateManager {
 
   private attemptReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     setTimeout(() => {
       if (!this.isConnected) {
@@ -492,8 +488,6 @@ class RealtimeStateManager {
   ): () => void {
     const subscriptionKey = `${tableName}-${JSON.stringify(filters || {})}`;
     
-    console.log(`Setting up subscription for ${tableName} with filters:`, filters);
-    
     // Add callback to the set
     if (!this.callbacks.has(subscriptionKey)) {
       this.callbacks.set(subscriptionKey, new Set());
@@ -503,7 +497,6 @@ class RealtimeStateManager {
     // Create subscription if it doesn't exist
     if (!this.subscriptions.has(subscriptionKey)) {
       const filterString = filters ? this.buildFilterString(filters) : undefined;
-      console.log(`Creating channel for ${tableName} with filter:`, filterString);
       
       const channel = supabase
         .channel(`table-${subscriptionKey}-${Date.now()}`)
@@ -515,16 +508,10 @@ class RealtimeStateManager {
             ...(filterString && { filter: filterString })
           }, 
           (payload) => {
-            console.log(`${tableName} real-time event received:`, payload);
             this.notifyCallbacks(subscriptionKey, payload);
           }
         )
-        .subscribe((status) => {
-          console.log(`${tableName} subscription status:`, status);
-          if (status === 'SUBSCRIBED') {
-            console.log(`Successfully subscribed to ${tableName} changes`);
-          }
-        });
+        .subscribe();
 
       this.subscriptions.set(subscriptionKey, channel);
     }
@@ -561,7 +548,7 @@ class RealtimeStateManager {
         try {
           callback(payload);
         } catch (error) {
-          console.error('Error in realtime callback:', error);
+          // Silent error handling for production
         }
       });
     }
@@ -579,8 +566,6 @@ class RealtimeStateManager {
 
 // Test real-time connection
 export const testRealtimeConnection = async () => {
-  console.log('Testing real-time connection...');
-  
   return new Promise((resolve) => {
     const channel = supabase
       .channel('test-connection')
@@ -591,23 +576,18 @@ export const testRealtimeConnection = async () => {
           table: 'orders'
         }, 
         (payload) => {
-          console.log('✅ Real-time is working! Received payload:', payload);
           channel.unsubscribe();
           resolve(true);
         }
       )
       .subscribe((status) => {
-        console.log('Test subscription status:', status);
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to test channel');
           // Wait 3 seconds to see if we get any events
           setTimeout(() => {
-            console.log('⚠️ No real-time events received. Replication might not be enabled.');
             channel.unsubscribe();
             resolve(false);
           }, 3000);
         } else if (status === 'CHANNEL_ERROR') {
-          console.log('❌ Failed to subscribe to test channel');
           resolve(false);
         }
       });
@@ -713,7 +693,6 @@ export const useOptimizedRealtimeData = <T>(
         setData(newData);
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
       setError('Gabim në ngarkimin e të dhënave');
     } finally {
       setLoading(false);
@@ -731,13 +710,11 @@ export const useOptimizedRealtimeData = <T>(
 
   // Setup fallback polling
   const setupPolling = useCallback(() => {
-    console.log(`Setting up fallback polling for ${subscriptionConfig.table}`);
     setRealtimeStatus('fallback');
     
     // Poll every 3 seconds for faster updates
     pollingRef.current = setInterval(() => {
       if (isUserActive()) {
-        console.log(`Polling ${subscriptionConfig.table} for updates...`);
         fetchData();
       }
     }, 3000);
@@ -745,8 +722,6 @@ export const useOptimizedRealtimeData = <T>(
 
   // Setup real-time subscription
   useEffect(() => {
-    console.log(`Setting up real-time subscription for ${subscriptionConfig.table} with filters:`, subscriptionConfig.filters);
-    
     // Initial data fetch
     fetchData();
 
@@ -756,24 +731,18 @@ export const useOptimizedRealtimeData = <T>(
         const isRealtimeWorking = await realtimeService.testConnection();
         
         if (isRealtimeWorking) {
-          console.log(`✅ Real-time is working for ${subscriptionConfig.table}`);
           setRealtimeStatus('working');
           
           // Setup real-time subscription
           const unsubscribe = realtimeService.manager.subscribeToTable(
             subscriptionConfig.table,
             (payload) => {
-              console.log(`${subscriptionConfig.table} real-time update received:`, payload);
-              console.log(`Event type: ${payload.eventType}, Table: ${payload.table}`);
-              
               // Handle different event types immediately
               if (payload.eventType === 'INSERT' && subscriptionConfig.onNewData) {
-                console.log('Calling onNewData callback with:', payload.new);
                 subscriptionConfig.onNewData(payload.new);
               }
               
               // Immediately fetch fresh data for all events
-              console.log('Fetching fresh data after real-time event...');
               fetchData();
             },
             subscriptionConfig.filters
@@ -781,12 +750,9 @@ export const useOptimizedRealtimeData = <T>(
 
           unsubscribeRef.current = unsubscribe;
         } else {
-          console.log(`⚠️ Real-time not working for ${subscriptionConfig.table}, using fallback polling`);
-          console.log('💡 To enable real-time: Go to Supabase Dashboard → Table Editor → Select table → Replication → Enable INSERT/UPDATE/DELETE');
           setupPolling();
         }
       } catch (error) {
-        console.error(`Error testing real-time for ${subscriptionConfig.table}:`, error);
         setupPolling();
       }
     };
@@ -795,7 +761,6 @@ export const useOptimizedRealtimeData = <T>(
 
     // Cleanup function
     return () => {
-      console.log(`Cleaning up subscription for ${subscriptionConfig.table}`);
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
