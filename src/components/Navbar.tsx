@@ -1,23 +1,22 @@
 import React from 'react';
-
-import { pepperoniLogo } from '../assets';
-import { gamingIcon, frameIcon } from '../assets';
+import { Gamepad2, ShoppingCart } from 'lucide-react';
+import pepperoniLogo from '../assets/pepperoni-test 1 (1).svg';
+import gamingIcon from '../assets/gaming 1.svg';
+import cartIcon from '../assets/Frame.svg';
 
 interface NavbarProps {
   cartTotal: string;
-  totalItems: number;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems }) => {
+const Navbar: React.FC<NavbarProps> = ({ cartTotal }) => {
   return (
-    <nav className="px-4 py-3 shadow-lg" style={{ backgroundColor: '#37B34A' }}>
-      <div className="w-full flex items-center justify-between">
+    <nav className="shadow-lg flex items-center justify-between h-[86px] bg-[#37B34A]">
         {/* Logo Section */}
-        <div className="flex items-center pl-2">
+        <div className="flex items-center pt-[30px] pl-[20px]">
           <img 
             src={pepperoniLogo}
             alt="Pepperoni Pizza Logo" 
-            className="h-14 w-auto"
+            className="h-[103px] w-[180px]"
           />
         </div>
 
@@ -28,29 +27,23 @@ const Navbar: React.FC<NavbarProps> = ({ cartTotal, totalItems }) => {
             <img 
               src={gamingIcon}
               alt="Gaming Controller" 
-              className="w-5 h-5"
+              className="w-[35px] h-[35px]"
             />
-            <span className="font-medium text-base italic">
+            <span className="font-semibold text-[24px] italic">
               LOJA: KUSH PAGUN?
             </span>
           </div>
 
-          {/* Price/Cart Section - Informational Only */}
-          <div className="flex items-center space-x-2 bg-white bg-opacity-15 rounded-md px-3 py-1.5 backdrop-blur-sm">
+          {/* Price/Cart Section */}
+          <div className="flex items-center space-x-2 rounded-md px-3 py-1.5 backdrop-blur-sm">
             <img 
-              src={frameIcon}
+              src={cartIcon}
               alt="Shopping Cart" 
-              className="w-5 h-5"
+              className="w-[50px] h-[50px]"
             />
-            <span className="text-white font-bold text-lg">{cartTotal}</span>
-            {totalItems > 0 && (
-              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
+            <span className="text-white font-semibold text-[34px]">{cartTotal}</span>
           </div>
         </div>
-      </div>
     </nav>
   );
 };

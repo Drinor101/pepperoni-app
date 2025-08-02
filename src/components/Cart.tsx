@@ -1,5 +1,9 @@
-import React from 'react';
-import { MapPin, Clock } from 'lucide-react';
+import React from "react";
+import { MapPin, Clock } from "lucide-react";
+import porosiaJuajSVG from "../assets/porosia-juaj.svg";
+import locationSVG from "../assets/location.svg";
+import clockSVG from "../assets/clock.svg";
+import porositDickaSVG from "../assets/porosit-dicka.svg";
 
 interface CartItem {
   id: string;
@@ -18,42 +22,37 @@ interface CartProps {
   total: number;
   formatPrice: (price: number) => string;
   onCheckout: () => void;
-  onBackToMenu: () => void;
-  showBackButton?: boolean; // New prop to control back button visibility
+  showCoupon?: boolean;
 }
 
 const Cart: React.FC<CartProps> = ({
   cartItems,
   updateQuantity,
-
+  removeFromCart,
+  subtotal,
   deliveryFee,
   total,
   formatPrice,
   onCheckout,
-  onBackToMenu,
-  showBackButton = false
+  showCoupon,
 }) => {
   return (
-    <div className="h-full flex flex-col bg-white rounded-lg border-2 border-orange-400 p-4 shadow-lg">
-      {/* Header */}
-      <div className="bg-green-500 text-white text-center py-3 rounded-lg mb-4">
-        <h2 className="text-xl font-bold italic">POROSIA JUAJ</h2>
-      </div>
+    <div className="bg-white rounded-[8px] max-h-[720px] h-fit overflow-hidden w-full max-w-[390px] border-2 border-[#F0592B] pt-[38px]  shadow-lg flex flex-col">
+      <img src={porosiaJuajSVG} alt="porosia juaj" className="mx-auto" />
 
-      {/* Location and Time */}
-      <div className="text-center mb-6">
-        <div className="flex items-center justify-center mb-2">
-          <MapPin className="w-4 h-4 mr-2" />
-          <span className="font-semibold">PEPPERONI - ARBËRI</span>
+      <div className="pt-[14px]">
+        <div className="flex items-center justify-center gap-[4px]">
+          <img src={locationSVG} alt="location icon" />
+          <span className="font-semibold text-[22px]">PEPPERONI - ARBËRI</span>
         </div>
-        <div className="flex items-center justify-center text-sm text-gray-600">
-          <Clock className="w-4 h-4 mr-2" />
-          <span>09:30 - 01:45</span>
+        <div className="flex items-center justify-center gap-[2px]">
+          <img src={clockSVG} alt="clock icon" />
+          <span className="text-[18px] font-semibold">09:30 - 01:45</span>
         </div>
       </div>
 
       {/* Cart Items */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 px-[21px] max-h-[300px] overflow-auto mt-[14px]">
         {cartItems.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             <p>Shporta është bosh</p>
@@ -61,27 +60,53 @@ const Cart: React.FC<CartProps> = ({
           </div>
         ) : (
           cartItems.map((item) => (
-            <div key={item.id} className="bg-orange-50 rounded-lg p-4 flex items-center justify-between">
-              <div className="flex items-center">
-                <img 
-                  src={item.image} 
-                  alt={item.name} 
-                  className="w-12 h-12 rounded-lg object-cover mr-4"
+            <div key={item.id} className="bg-[#FEF4EE] rounded-lg">
+              <div className="flex gap-[16px]">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-[102px] h-[102px] -rotate-[3deg] -mt-[2px] ml-[3px]"
                 />
-                <div>
-                  <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                <div className="flex flex-col gap-[20px] py-[20px] pr-[15px] w-full">
+                  <h3 className="font-semibold text-[18px]">{item.name}</h3>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-[8px] text-base">
+                      <button
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity + 1)
+                        }
+                      >
+                        +
+                      </button>
+                      <p className="font-semibold text-[#FF7B1F]">
+                        {item.quantity}
+                      </p>
+                      <button
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity - 1)
+                        }
+                      >
+                        -
+                      </button>
+                    </div>
+                    <div className="px-[10px] max-h-[30px] flex items-center py-[5px] font-semibold text-[18px] bg-[#37B34A] w-fit rotate-[-5deg] text-white">
+                      {formatPrice(item.price * item.quantity)}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              {/* <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                     className="text-orange-500 font-bold text-lg hover:text-orange-600"
                   >
                     +
                   </button>
-                  <span className="font-bold text-orange-500">{item.quantity}</span>
-                  <button 
+                  <span className="font-bold text-orange-500">
+                    {item.quantity}
+                  </span>
+                  <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                     className="text-gray-400 font-bold text-lg hover:text-gray-600"
                   >
@@ -91,43 +116,39 @@ const Cart: React.FC<CartProps> = ({
                 <div className="bg-green-500 text-white px-3 py-1 rounded font-bold">
                   {formatPrice(item.price * item.quantity)}
                 </div>
-              </div>
+              </div> */}
             </div>
           ))
         )}
       </div>
 
-      {/* Total Section */}
-      <div className="text-center mb-4">
-        <div className="text-2xl font-bold text-black italic mb-1">
-          TOTAL: {formatPrice(total)}
+      {/* Coupon Section */}
+      {showCoupon && (
+        <div className="px-[21px] w-full flex gap-[4px] mt-4">
+          <input placeholder="Vendos kuponin" className="border p-2 w-full" />
+          <button className="p-2 bg-black text-white px-8">Apliko</button>
         </div>
-        <div className="text-sm text-gray-600 italic">
+      )}
+
+      {/* Total Section */}
+      <div className="flex flex-col items-end w-full px-[21px] pb-[50px] mt-[14px]">
+        <div className="text-2xl font-bold text-black italic">
+          TOTALI: {formatPrice(total)}
+        </div>
+        <div className="text-base font-medium text-[#211E1F] italic">
           Delivery: {formatPrice(deliveryFee)}
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-3">
-        <button 
-          onClick={onCheckout}
-          disabled={cartItems.length === 0}
-          className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-center py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-colors"
-        >
-          <div className="font-bold text-sm leading-tight">
-            POROSIT DIÇKA<br />
-            SE PE SHOH JE UNTU!!!
-          </div>
+      {/* Order Button */}
+      <div className="h-[67px] bg-[#F0592B] w-full relative">
+        <button onClick={onCheckout} disabled={cartItems.length === 0}>
+          <img
+            src={porositDickaSVG}
+            alt="porosit dicka icon"
+            className="absolute left-[50px] w-[265px] max-w-[265px] max-h-[62px] -top-[30px]"
+          />
         </button>
-        
-        {showBackButton && (
-          <button 
-            onClick={onBackToMenu}
-            className="w-full bg-gray-500 text-white text-center py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Kthehu në menunë
-          </button>
-        )}
       </div>
     </div>
   );
